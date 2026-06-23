@@ -167,10 +167,46 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 /* ── Recurring end badge ── */
 .ends-badge{font-size:10px;background:#e3f2fd;color:#1565c0;padding:1px 5px;border-radius:8px;font-weight:600;margin-left:4px}
 
+/* ── Deduction toggle ── */
+.ded-btn{border:2px solid var(--g200);background:#fff;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;color:var(--g500);white-space:nowrap;flex-shrink:0;transition:all .2s}
+.ded-btn.deducted{border-color:var(--green);background:#f0fff4;color:var(--green)}
+.ded-btn:active{transform:scale(.95)}
+
+/* ── Forecast grid ── */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.fcard{background:#fff;border-radius:var(--r);padding:14px 12px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.fcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.fcard.this-month::before{background:var(--teal)}
+.fcard.next-month::before{background:var(--navy2)}
+.fcard .fc-month{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g500);margin-bottom:8px}
+.fcard .fc-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:4px}
+.fcard .fc-lbl{color:var(--g500)}
+.fcard .fc-val{font-weight:700}
+.fcard .fc-net{display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid var(--g200);font-size:13px;font-weight:700}
+.fcard .fc-tag{font-size:9px;background:var(--g200);color:var(--g500);padding:1px 5px;border-radius:8px;font-weight:600}
+
 /* ── Segment toggle for expenses ── */
 .seg{display:flex;background:var(--g200);border-radius:var(--rs);padding:3px;gap:2px;margin-bottom:12px}
 .seg-btn{flex:1;padding:8px;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;background:none;color:var(--g500);transition:all .2s}
 .seg-btn.active{background:#fff;color:var(--navy);box-shadow:var(--shadow)}
+
+/* ── Expected income row ── */
+.inc-row{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--g200);gap:8px}
+.inc-row:last-child{border-bottom:none}
+.inc-source{flex:1;min-width:0}
+.inc-source .name{font-size:14px;font-weight:600}
+.inc-source .sub{font-size:11px;color:var(--g500);margin-top:2px}
+.inc-amt-wrap{display:flex;align-items:center;gap:4px}
+.inc-amt{font-size:14px;font-weight:700;color:var(--navy);cursor:pointer;border-bottom:1px dashed var(--g200);padding:1px 3px;border-radius:3px}
+.inc-amt:hover{background:var(--g100)}
+.inc-amt-input{width:90px;padding:4px 8px;border:2px solid var(--navy);border-radius:var(--rs);font-size:14px;font-weight:700;color:var(--navy);outline:none}
+.rec-btn{border:2px solid var(--g200);background:#fff;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700;cursor:pointer;color:var(--g500);white-space:nowrap;transition:all .2s}
+.rec-btn.received{border-color:var(--green);background:#f0fff4;color:var(--green)}
+.rec-btn:active{transform:scale(.95)}
+
+/* ── Section divider ── */
+.divider{font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 8px;display:flex;align-items:center;gap:8px}
+.divider::after{content:'';flex:1;height:1px;background:var(--g200)}
 
 @media(min-width:600px){.content{max-width:480px;margin-left:auto;margin-right:auto}.hdr,.nav,.fab{max-width:480px;left:50%;transform:translateX(-50%)}.overlay{justify-content:center}.modal{border-radius:var(--r);margin-bottom:40px;max-width:480px}}
 </style>
@@ -196,15 +232,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="panel active" id="panel-dashboard">
     <div id="alerts"></div>
     <div class="sgrid">
-      <div class="scard"><div class="val teal" id="sumIncome">—</div><div class="lbl">Income This Month</div></div>
-      <div class="scard"><div class="val neg" id="sumExpenses">—</div><div class="lbl">Expenses This Month</div></div>
-      <div class="scard"><div class="val" id="sumNet">—</div><div class="lbl">Net This Month</div></div>
-      <div class="scard"><div class="val" id="sumBalance">—</div><div class="lbl">Running Balance</div></div>
+      <div class="scard"><div class="val teal" id="sumIncome">—</div><div class="lbl">Income Received</div></div>
+      <div class="scard"><div class="val neg" id="sumExpenses">—</div><div class="lbl">Deducted This Month</div></div>
+      <div class="scard"><div class="val" id="sumNet">—</div><div class="lbl">Actual Net (Month)</div></div>
+      <div class="scard"><div class="val" id="sumBalance">—</div><div class="lbl">Current Balance</div></div>
     </div>
     <div class="card">
       <div class="card-title">Monthly Budget Usage</div>
       <div id="budgetBar"></div>
     </div>
+    <div class="sh"><div class="sh-title">📊 Monthly Forecast</div></div>
+    <div class="fgrid" id="forecastGrid"></div>
+
     <div class="sh"><div class="sh-title">📅 Next 30 Days</div></div>
     <div class="card" id="upcomingPreview"></div>
     <div class="sh" style="margin-top:4px"><div class="sh-title">📊 Cash Flow (6mo)</div></div>
@@ -213,7 +252,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
   <!-- INCOME -->
   <div class="panel" id="panel-income">
-    <div class="sh"><div class="sh-title">Income Log</div><div class="sh-action" id="incomeTot"></div></div>
+    <div class="sh">
+      <div class="sh-title">📥 Expected Income</div>
+      <div class="sh-action" id="incomeMonthLabel"></div>
+    </div>
+    <div class="card" id="expectedIncomeList"></div>
+
+    <div class="divider">Other / One-off Income</div>
+    <div class="sh"><div class="sh-title"></div><div class="sh-action" id="incomeTot"></div></div>
     <div class="mchips" id="incomeMonths"></div>
     <div class="card" id="incomeList"></div>
   </div>
@@ -222,14 +268,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
   <div class="panel" id="panel-expenses">
     <div class="seg">
       <button class="seg-btn active" id="segRecurring" onclick="showExpSeg('recurring')">🔄 Recurring</button>
-      <button class="seg-btn" id="segUpcoming" onclick="showExpSeg('upcoming')">📋 One-Time</button>
+      <button class="seg-btn" id="segUpcoming" onclick="showExpSeg('upcoming')">⚡ Unexpected</button>
     </div>
     <div id="recurringView">
       <div class="sh"><div class="sh-title">Monthly Recurring</div><div class="sh-action" id="recurTotal"></div></div>
       <div class="card" id="recurList"></div>
     </div>
     <div id="upcomingView" style="display:none">
-      <div class="sh"><div class="sh-title">One-Time &amp; Upcoming</div></div>
+      <div class="sh"><div class="sh-title">Unexpected &amp; One-Time</div><div class="sh-action" style="cursor:pointer;color:var(--teal2);font-weight:600" onclick="openAddUnexpected()">+ Add</div></div>
       <div class="card" id="upcomingList"></div>
     </div>
   </div>
@@ -324,7 +370,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
     </div>
     <div class="tgl" id="typeTgl">
       <button class="tgl-btn active" onclick="setType('income')">💰 Income</button>
-      <button class="tgl-btn" onclick="setType('once')">📋 One-Time Exp</button>
+      <button class="tgl-btn" onclick="setType('once')">⚡ Unexpected</button>
       <button class="tgl-btn" onclick="setType('recurring')">🔄 Recurring</button>
     </div>
     <form onsubmit="doSave(event)">
@@ -390,7 +436,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 // ═══════════════════════════════════════════════
 //  CONSTANTS
 // ═══════════════════════════════════════════════
-const LS_KEY = 'hh_tracker_v3';
+const LS_KEY = 'hh_tracker_v5'; // bumped — adds expected income system
 const NOTIF_KEY = 'hh_notified';
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -400,9 +446,12 @@ const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct
 function emptyData() {
   return {
     config: { initialBalance: 0, startDate: '2026-01-01', ntfyTopic: '', fbUrl: '', fbSecret: '' },
-    income: [],      // { id, source, amount, date, note }
-    recurring: [],   // { id, name, amount, category, dom, endDate, remDays, active }
-    once: [],        // { id, name, amount, dueDate, category, paid, paidDate, remDays, note }
+    income: [],           // { id, source, amount, date, note }  — one-off/manual income
+    expectedIncome: [],   // { id, source, defaultAmount, dom, active }  — recurring income templates
+    incomeReceipts: {},   // { "srcId_YYYY-MM": { amount, received, date } }  — monthly receipt records
+    recurring: [],        // { id, name, amount, category, dom, endDate, remDays, active }
+    once: [],             // { id, name, amount, dueDate, category, paid, paidDate, remDays, note }
+    deductions: {},       // { "expId_YYYY-MM": { amount, date } }  — manually acknowledged recurring deductions
   };
 }
 
@@ -468,56 +517,38 @@ function setSyncDot(state) {
 }
 
 // ═══════════════════════════════════════════════
-//  BALANCE CALCULATION
-//  balance = initialBalance + income(from startDate) - recurringDue(from startDate) - onceDue
+//  BALANCE & FORECAST
 // ═══════════════════════════════════════════════
 function today0() { const d = new Date(); d.setHours(0,0,0,0); return d; }
 
+// ACTUAL balance — only what has been manually acknowledged
 function calcBalance() {
-  const now = today0();
-  const start = new Date(D.config.startDate || '2026-01-01');
   let bal = Number(D.config.initialBalance) || 0;
-
-  // Income recorded
-  for (const e of D.income) {
-    const d = new Date(e.date);
-    if (d >= start && d <= now) bal += Number(e.amount);
+  // One-off manual income entries (legacy + ad-hoc)
+  for (const e of D.income) bal += Number(e.amount);
+  // Expected income that has been marked as received this month+prior months
+  for (const [, r] of Object.entries(D.incomeReceipts || {})) {
+    if (r.received) bal += Number(r.amount);
   }
-
-  // Recurring expenses — each month from start to now
-  for (const exp of D.recurring) {
-    if (!exp.active) continue;
-    let cur = new Date(start.getFullYear(), start.getMonth(), 1);
-    while (cur <= now) {
-      const dom = exp.dom || 1;
-      const due = new Date(cur.getFullYear(), cur.getMonth(), dom);
-      if (due >= start && due <= now) {
-        if (exp.endDate && due > new Date(exp.endDate)) { cur.setMonth(cur.getMonth()+1); continue; }
-        bal -= Number(exp.amount);
-      }
-      cur.setMonth(cur.getMonth() + 1);
-    }
-  }
-
-  // One-time expenses that are due/paid
-  for (const exp of D.once) {
-    const due = new Date(exp.dueDate);
-    if (due <= now || exp.paid) {
-      bal -= Number(exp.amount);
-      // auto-mark paid
-      if (!exp.paid && due <= now) { exp.paid = true; exp.paidDate = fmtDate(now); }
-    }
-  }
-
+  for (const ded of Object.values(D.deductions || {})) bal -= Number(ded.amount);
+  for (const exp of D.once) { if (exp.paid) bal -= Number(exp.amount); }
   return bal;
 }
 
-function thisMonthTotals() {
-  const now = today0();
-  const y = now.getFullYear(), m = now.getMonth();
-  const first = new Date(y, m, 1), last = new Date(y, m+1, 0);
+// FORECAST for a given year/month — all expected income & expenses regardless of deduction status
+function calcForecast(year, month) {
+  const first = new Date(year, month, 1);
+  const last  = new Date(year, month + 1, 0);
+  const yyyymm = `${year}-${String(month + 1).padStart(2, '0')}`;
   let income = 0, expenses = 0;
 
+  // Expected recurring income (use receipt amount override if set, else default)
+  for (const src of D.expectedIncome || []) {
+    if (!src.active) continue;
+    const receipt = (D.incomeReceipts || {})[src.id + '_' + yyyymm];
+    income += Number(receipt ? receipt.amount : src.defaultAmount);
+  }
+  // One-off manual income entries for this month
   for (const e of D.income) {
     const d = new Date(e.date);
     if (d >= first && d <= last) income += Number(e.amount);
@@ -531,7 +562,23 @@ function thisMonthTotals() {
     const d = new Date(exp.dueDate);
     if (d >= first && d <= last) expenses += Number(exp.amount);
   }
-  return { income, expenses };
+  return { income, expenses, net: income - expenses,
+    monthLabel: MONTHS_SHORT[month] + ' ' + year };
+}
+
+// Amount already deducted for a month (by yyyymm string e.g. "2026-06")
+function monthDeducted(yyyymm) {
+  return Object.entries(D.deductions || {})
+    .filter(([k]) => k.endsWith('_' + yyyymm))
+    .reduce((s, [, v]) => s + Number(v.amount), 0);
+}
+
+function thisMonthTotals() {
+  const now = today0();
+  const y = now.getFullYear(), m = now.getMonth();
+  // use calcForecast for the month numbers
+  const f = calcForecast(y, m);
+  return { income: f.income, expenses: f.expenses };
 }
 
 function sixMonthChart() {
@@ -715,18 +762,34 @@ function updateBadge() {
 //  RENDER DASHBOARD
 // ═══════════════════════════════════════════════
 function renderDash() {
+  const now = today0();
   const bal = calcBalance();
-  const {income, expenses} = thisMonthTotals();
-  const net = income - expenses;
   const upcoming = upcomingN(30);
   const overdue  = upcoming.filter(u=>u.daysLeft<0);
   const dueSoon  = upcoming.filter(u=>u.daysLeft>=0&&u.daysLeft<=3);
 
-  document.getElementById('sumIncome').textContent   = fmtAED(income);
-  document.getElementById('sumExpenses').textContent = fmtAED(expenses);
+  // This month key
+  const yyyymm = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const dedSoFar = monthDeducted(yyyymm);
+  const paidSoFar = D.once.filter(e=>e.paid&&e.dueDate.startsWith(yyyymm)).reduce((s,e)=>s+Number(e.amount),0);
+  const totalDeductedThisMonth = dedSoFar + paidSoFar;
+
+  // Income received this month (expected receipts + manual)
+  const first = new Date(now.getFullYear(), now.getMonth(), 1);
+  const last  = new Date(now.getFullYear(), now.getMonth()+1, 0);
+  const expReceivedThisMonth = (D.expectedIncome||[]).filter(s=>s.active).reduce((s,src)=>{
+    const r = (D.incomeReceipts||{})[src.id+'_'+yyyymm];
+    return r&&r.received ? s+Number(r.amount) : s;
+  }, 0);
+  const manualIncThisMonth = D.income.filter(e=>{const d=new Date(e.date);return d>=first&&d<=last;}).reduce((s,e)=>s+Number(e.amount),0);
+  const incomeThisMonth = expReceivedThisMonth + manualIncThisMonth;
+
+  document.getElementById('sumIncome').textContent   = fmtAED(incomeThisMonth);
+  document.getElementById('sumExpenses').textContent = fmtAED(totalDeductedThisMonth);
+  const netActual = incomeThisMonth - totalDeductedThisMonth;
   const netEl = document.getElementById('sumNet');
-  netEl.textContent = (net>=0?'+':'')+fmtAED(net);
-  netEl.className = 'val ' + (net>=0?'pos':'neg');
+  netEl.textContent = (netActual>=0?'+':'')+fmtAED(netActual);
+  netEl.className = 'val ' + (netActual>=0?'pos':'neg');
   const balEl = document.getElementById('sumBalance');
   balEl.textContent = fmtAED(bal);
   balEl.className = 'val ' + (bal>=0?'pos':'neg');
@@ -737,16 +800,40 @@ function renderDash() {
   if (overdue.length) aEl.innerHTML += `<div class="alert alert-danger"><div class="alert-icon">🚨</div><div class="alert-body"><div class="alert-title">${overdue.length} Overdue Payment${overdue.length>1?'s':''}</div><div class="alert-text">${overdue.map(e=>e.name).join(' · ')}</div></div></div>`;
   if (dueSoon.length) aEl.innerHTML += `<div class="alert alert-warning"><div class="alert-icon">⏰</div><div class="alert-body"><div class="alert-title">${dueSoon.length} Due Very Soon</div><div class="alert-text">${dueSoon.map(e=>`${e.name} (${e.daysLeft===0?'today':e.daysLeft+'d'})`).join(' · ')}</div></div></div>`;
 
-  // Budget bar
-  const pct = income>0 ? Math.min(100,(expenses/income)*100) : 0;
+  // Budget bar (actual deductions vs income)
+  const pct = incomeThisMonth>0 ? Math.min(100,(totalDeductedThisMonth/incomeThisMonth)*100) : 0;
   const col = pct>90?'var(--red)':pct>70?'var(--yellow)':'var(--green)';
   document.getElementById('budgetBar').innerHTML = `
     <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
-      <span style="color:var(--red)">Spent: ${fmtAED(expenses)}</span>
-      <span style="color:var(--teal2)">Income: ${fmtAED(income)}</span>
+      <span style="color:var(--red)">Deducted: ${fmtAED(totalDeductedThisMonth)}</span>
+      <span style="color:var(--teal2)">Income: ${fmtAED(incomeThisMonth)}</span>
     </div>
     <div class="prog-bar"><div class="prog-fill" style="width:${pct.toFixed(0)}%;background:${col}"></div></div>
-    <div style="text-align:right;font-size:11px;margin-top:4px;color:var(--g500)">${pct.toFixed(0)}% of income</div>`;
+    <div style="text-align:right;font-size:11px;margin-top:4px;color:var(--g500)">${pct.toFixed(0)}% of income deducted</div>`;
+
+  // ── Forecast cards ──
+  const thisFC = calcForecast(now.getFullYear(), now.getMonth());
+  const nextD  = new Date(now.getFullYear(), now.getMonth()+1, 1);
+  const nextFC = calcForecast(nextD.getFullYear(), nextD.getMonth());
+  // Project end-of-month balance: bal + (remaining income not yet entered) - (remaining expenses not yet deducted)
+  const thisRemExpenses = thisFC.expenses - totalDeductedThisMonth;
+  const projThisEnd = bal - Math.max(0, thisRemExpenses);
+  const projNextEnd = projThisEnd + nextFC.net;
+
+  function fcastCard(fc, projBal, cls, tag) {
+    const nc = fc.net>=0?'var(--green)':'var(--red)';
+    const pb = projBal>=0?'var(--green)':'var(--red)';
+    return `<div class="fcard ${cls}">
+      <div class="fc-month">${fc.monthLabel} <span class="fc-tag">${tag}</span></div>
+      <div class="fc-row"><span class="fc-lbl">Expected income</span><span class="fc-val" style="color:var(--green)">${fc.income>0?'+'+fmtAED(fc.income):'—'}</span></div>
+      <div class="fc-row"><span class="fc-lbl">Expected expenses</span><span class="fc-val" style="color:var(--red)">${fc.expenses>0?'−'+fmtAED(fc.expenses):'—'}</span></div>
+      <div class="fc-net"><span>Net forecast</span><span style="color:${nc}">${(fc.net>=0?'+':'')+fmtAED(fc.net)}</span></div>
+      <div style="margin-top:6px;font-size:11px;color:var(--g500)">Projected bal: <strong style="color:${pb}">${fmtAED(projBal)}</strong></div>
+    </div>`;
+  }
+  document.getElementById('forecastGrid').innerHTML =
+    fcastCard(thisFC, projThisEnd, 'this-month', 'This Month') +
+    fcastCard(nextFC, projNextEnd, 'next-month', 'Next Month');
 
   // Upcoming preview
   const upEl = document.getElementById('upcomingPreview');
@@ -763,7 +850,10 @@ function renderDash() {
           <div class="li-name">${exp.name}${exp.type==='recurring'?'<span class="ends-badge">recurring</span>':''}</div>
           <div class="li-meta">${exp.dueDate} · <span style="color:${dlCol};font-weight:700">${dlLbl}</span></div>
         </div>
-        <div class="li-amt exp">${fmtAED(exp.amount)}</div>
+        <div style="display:flex;align-items:center;gap:3px">
+          <div class="li-amt exp">${fmtAED(exp.amount)}</div>
+          ${exp.type==='once'?`<button class="ibtn" title="Reschedule" onclick="rescheduleOnce('${exp.id}')">📅</button>`:''}
+        </div>
       </div>`;
     }).join('');
   }
@@ -785,15 +875,63 @@ function renderDash() {
 //  RENDER INCOME
 // ═══════════════════════════════════════════════
 function renderIncome() {
+  const now = today0();
+  const yyyymm = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthLbl = MONTHS_SHORT[now.getMonth()] + ' ' + now.getFullYear();
+
+  // ── Expected income section ──
+  document.getElementById('incomeMonthLabel').textContent = monthLbl;
+  const expSrcs = D.expectedIncome || [];
+  const eEl = document.getElementById('expectedIncomeList');
+
+  if (!expSrcs.filter(s=>s.active).length) {
+    eEl.innerHTML = '<div class="empty"><div class="ico">💸</div><div class="txt">No expected income set.<br>Add sources in Settings or tap + → Income.</div></div>';
+  } else {
+    const totalExpected = expSrcs.filter(s=>s.active).reduce((s,src)=>{
+      const r = (D.incomeReceipts||{})[src.id+'_'+yyyymm];
+      return s + Number(r ? r.amount : src.defaultAmount);
+    }, 0);
+    const totalReceived = expSrcs.filter(s=>s.active).reduce((s,src)=>{
+      const r = (D.incomeReceipts||{})[src.id+'_'+yyyymm];
+      return r&&r.received ? s + Number(r.amount) : s;
+    }, 0);
+
+    eEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--g200)">
+        <span style="color:var(--g500)">Expected: <strong style="color:var(--navy)">${fmtAED(totalExpected)}</strong></span>
+        <span style="color:var(--g500)">Received: <strong style="color:var(--green)">${fmtAED(totalReceived)}</strong></span>
+      </div>` +
+      expSrcs.filter(s=>s.active).map(src => {
+        const key = src.id + '_' + yyyymm;
+        const r = (D.incomeReceipts||{})[key];
+        const amt = r ? r.amount : src.defaultAmount;
+        const isRec = r && r.received;
+        return `<div class="inc-row">
+          <div class="li-icon" style="background:#e8f5e9;margin-right:10px">💰</div>
+          <div class="inc-source">
+            <div class="name">${src.source}</div>
+            <div class="sub">Expected day ${src.dom} · default ${fmtAED(src.defaultAmount)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+            <div class="inc-amt-wrap">
+              <span class="inc-amt" onclick="editReceiptAmt('${src.id}','${yyyymm}')" title="Tap to override amount">${fmtAED(amt)} ✏️</span>
+            </div>
+            <button class="rec-btn${isRec?' received':''}" onclick="toggleReceipt('${src.id}','${yyyymm}')">
+              ${isRec ? '✅ Received' : '○ Not yet'}
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+  }
+
+  // ── One-off / manual income ──
   const months = [...new Set(D.income.map(e=>e.date.slice(0,7)))].sort().reverse();
   if (!curIncMonth && months.length) curIncMonth = months[0];
 
-  // Month chips
   const mEl = document.getElementById('incomeMonths');
   mEl.innerHTML = months.map(m => {
     const [y,mo] = m.split('-');
-    const lbl = MONTHS_SHORT[parseInt(mo)-1] + ' ' + y.slice(2);
-    return `<div class="mchip${curIncMonth===m?' active':''}" onclick="selIncMonth('${m}')">${lbl}</div>`;
+    return `<div class="mchip${curIncMonth===m?' active':''}" onclick="selIncMonth('${m}')">${MONTHS_SHORT[parseInt(mo)-1]} ${y.slice(2)}</div>`;
   }).join('');
 
   const filtered = curIncMonth ? D.income.filter(e=>e.date.startsWith(curIncMonth)) : D.income;
@@ -802,11 +940,11 @@ function renderIncome() {
 
   const lEl = document.getElementById('incomeList');
   if (!filtered.length) {
-    lEl.innerHTML = '<div class="empty"><div class="ico">💰</div><div class="txt">No income recorded yet.<br>Tap + to add.</div></div>';
+    lEl.innerHTML = '<div class="empty"><div class="ico">💵</div><div class="txt">No one-off income yet.<br>Tap + to add a bonus, rental, or extra.</div></div>';
   } else {
     lEl.innerHTML = [...filtered].sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`
       <div class="li">
-        <div class="li-icon" style="background:#e8f5e9">💰</div>
+        <div class="li-icon" style="background:#e8f5e9">💵</div>
         <div class="li-info">
           <div class="li-name">${e.source}</div>
           <div class="li-meta">${e.date}${e.note?' · '+e.note:''}</div>
@@ -834,21 +972,40 @@ function renderExpenses() {
   if (!active.length) {
     rEl.innerHTML = '<div class="empty"><div class="ico">🔄</div><div class="txt">No recurring expenses.<br>Tap + to add.</div></div>';
   } else {
+    const now2 = today0();
+    const curYYYYMM = `${now2.getFullYear()}-${String(now2.getMonth()+1).padStart(2,'0')}`;
+    const curMonthLbl = MONTHS_SHORT[now2.getMonth()];
+
+    // Total deducted this month
+    const dedThisMonth = monthDeducted(curYYYYMM);
+    const totalMonthly = active.reduce((s,e)=>s+Number(e.amount),0);
+
     const grouped = active.reduce((g,e)=>{ (g[e.category]=g[e.category]||[]).push(e); return g; },{});
-    rEl.innerHTML = Object.entries(grouped).map(([cat,items])=>`
+    rEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--g200)">
+        <span style="color:var(--g500)">${curMonthLbl} deducted: <strong style="color:var(--red)">${fmtAED(dedThisMonth)}</strong></span>
+        <span style="color:var(--g500)">Total: <strong style="color:var(--navy)">${fmtAED(totalMonthly)}</strong></span>
+      </div>` +
+    Object.entries(grouped).map(([cat,items])=>`
       <div style="margin-bottom:10px">
         <div style="font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${CAT_ICON[cat]||'📦'} ${cat}</div>
-        ${items.map(exp=>`
-          <div class="li">
+        ${items.map(exp=>{
+          const key = exp.id+'_'+curYYYYMM;
+          const isDed = !!(D.deductions||{})[key];
+          return `<div class="li">
+            <div class="li-icon" style="background:${CAT_BG[cat]||CAT_BG.Other};margin-right:10px">${CAT_ICON[cat]||'📦'}</div>
             <div class="li-info">
               <div class="li-name">${exp.name}${exp.endDate?`<span class="ends-badge">ends ${exp.endDate}</span>`:''}</div>
-              <div class="li-meta">Day ${exp.dom||1}/mo · remind ${exp.remDays||3}d before</div>
+              <div class="li-meta">Day ${exp.dom||1}/mo · ${fmtAED(exp.amount)}</div>
             </div>
-            <div style="display:flex;align-items:center;gap:2px">
-              <div class="li-amt exp">${fmtAED(exp.amount)}</div>
+            <div style="display:flex;align-items:center;gap:5px">
+              <button class="ded-btn${isDed?' deducted':''}" onclick="toggleDeduction('${exp.id}','${curYYYYMM}')">
+                ${curMonthLbl}: ${isDed?'✅ Paid':'○'}
+              </button>
               <button class="ibtn" onclick="delRecurring('${exp.id}')">🗑</button>
             </div>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>`).join('');
   }
 
@@ -881,6 +1038,7 @@ function renderExpenses() {
         </div>
         <div style="display:flex;align-items:center;gap:2px">
           <div class="li-amt exp">${fmtAED(exp.amount)}</div>
+          ${!exp.paid?`<button class="ibtn" title="Reschedule date" onclick="rescheduleOnce('${exp.id}')">📅</button>`:''}
           ${!exp.paid?`<button class="ibtn" title="Mark paid" onclick="markPaid('${exp.id}')">✅</button>`:''}
           <button class="ibtn" onclick="delOnce('${exp.id}')">🗑</button>
         </div>
@@ -1013,6 +1171,74 @@ function delRecurring(id){ if(!confirm('Delete recurring expense?'))return; D.re
 function delOnce(id)     { if(!confirm('Delete this expense?'))return; D.once=D.once.filter(e=>e.id!==id); save(); render(); toast('Deleted'); }
 function markPaid(id)    { const e=D.once.find(x=>x.id===id); if(e){e.paid=true;e.paidDate=fmtDate(new Date());save();render();toast('✅ Marked paid');} }
 
+// rescheduleOnce defined below near modal HTML
+
+// ── Income receipt toggle ──
+function toggleReceipt(srcId, yyyymm) {
+  if (!D.incomeReceipts) D.incomeReceipts = {};
+  const key = srcId + '_' + yyyymm;
+  const src = (D.expectedIncome || []).find(s=>s.id===srcId);
+  if (!src) return;
+  const existing = D.incomeReceipts[key];
+  if (existing && existing.received) {
+    // Undo receipt
+    delete D.incomeReceipts[key];
+    toast('↩ Receipt removed — balance updated');
+  } else {
+    // Mark as received (keep any amount override)
+    const amt = existing ? existing.amount : src.defaultAmount;
+    D.incomeReceipts[key] = { amount: amt, received: true, date: fmtDate(new Date()) };
+    toast('✅ ' + src.source + ' received — +' + fmtAED(amt));
+  }
+  save(); render();
+}
+
+function editReceiptAmt(srcId, yyyymm) {
+  const src = (D.expectedIncome || []).find(s=>s.id===srcId);
+  if (!src) return;
+  const existing = (D.incomeReceipts||{})[srcId+'_'+yyyymm];
+  const current = existing ? existing.amount : src.defaultAmount;
+  const val = prompt(`Override amount for ${src.source} (${yyyymm}):\nLeave blank to reset to default (${fmtAED(src.defaultAmount)})`, current);
+  if (val === null) return; // cancelled
+  if (!D.incomeReceipts) D.incomeReceipts = {};
+  const key = srcId + '_' + yyyymm;
+  if (val.trim() === '') {
+    // Reset to default
+    if (existing) delete D.incomeReceipts[key];
+    toast('↩ Reset to default amount');
+  } else {
+    const newAmt = parseFloat(val);
+    if (isNaN(newAmt)) { toast('❌ Invalid amount'); return; }
+    D.incomeReceipts[key] = { ...(existing||{}), amount: newAmt };
+    toast('✅ Amount updated to ' + fmtAED(newAmt));
+  }
+  save(); render();
+}
+
+function openAddUnexpected() {
+  setType('once');
+  document.getElementById('eDate').value = fmtDate(new Date());
+  document.getElementById('eName').value = '';
+  document.getElementById('eAmt').value = '';
+  document.getElementById('eNote').value = '';
+  document.getElementById('addOverlay').classList.add('show');
+}
+
+function toggleDeduction(expId, yyyymm) {
+  if (!D.deductions) D.deductions = {};
+  const key = expId + '_' + yyyymm;
+  const exp = D.recurring.find(e=>e.id===expId);
+  if (!exp) return;
+  if (D.deductions[key]) {
+    delete D.deductions[key];
+    toast('↩ Deduction removed — balance updated');
+  } else {
+    D.deductions[key] = { amount: exp.amount, date: fmtDate(new Date()), expName: exp.name };
+    toast('✅ Deducted from balance');
+  }
+  save(); render();
+}
+
 // ═══════════════════════════════════════════════
 //  TOAST
 // ═══════════════════════════════════════════════
@@ -1057,19 +1283,13 @@ function seedDefaults() {
     {id:uid(),name:'Hacienda Ras el Hekma — 3rd',amount:16657,dueDate:'2026-11-15',category:'Investment',paid:false,remDays:14,note:'Installment 3'},
   ];
 
-  // Income Jan–Jun 2026 (pre-loaded from spreadsheet)
-  const incomeSources = [
-    ['Ahmed Salary',68000,'Monthly salary'],
-    ['Diana Salary',61000,'Monthly salary'],
-    ['Somabay Rental',4000,'Rental income'],
-    ['Telal Rental',16500,'Rental income'],
+  // Expected recurring income sources
+  D.expectedIncome = [
+    { id: uid(), source: 'Ahmed Salary',   defaultAmount: 68000, dom: 1,  active: true },
+    { id: uid(), source: 'Diana Salary',   defaultAmount: 61000, dom: 1,  active: true },
+    { id: uid(), source: 'Somabay Rental', defaultAmount: 4000,  dom: 5,  active: true },
+    { id: uid(), source: 'Telal Rental',   defaultAmount: 16500, dom: 5,  active: true },
   ];
-  for (let mo=1; mo<=6; mo++) {
-    const dateStr = `2026-${String(mo).padStart(2,'0')}-01`;
-    for (const [source,amount,note] of incomeSources) {
-      D.income.push({ id:uid(), source, amount, date:dateStr, note });
-    }
-  }
 
   save();
 }
@@ -1102,6 +1322,53 @@ window.addEventListener('DOMContentLoaded', async () => {
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
 });
+
+// ── Reschedule modal ──
+function rescheduleOnce(id) {
+  const exp = D.once.find(e=>e.id===id);
+  if (!exp) return;
+  document.getElementById('reschedModal').dataset.expId = id;
+  document.getElementById('reschedTitle').textContent = `Reschedule: ${exp.name}`;
+  document.getElementById('reschedCurrent').textContent = `Current due date: ${exp.dueDate}`;
+  document.getElementById('reschedDate').value = exp.dueDate;
+  document.getElementById('reschedOverlay').classList.add('show');
+  setTimeout(()=>document.getElementById('reschedDate').focus(), 100);
+}
+function closeResched() {
+  document.getElementById('reschedOverlay').classList.remove('show');
+}
+function confirmResched() {
+  const id = document.getElementById('reschedModal').dataset.expId;
+  const newDate = document.getElementById('reschedDate').value;
+  if (!newDate || !/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+    toast('❌ Please pick a valid date');
+    return;
+  }
+  const exp = D.once.find(e=>e.id===id);
+  if (!exp) return;
+  const old = exp.dueDate;
+  exp.dueDate = newDate;
+  save(); render();
+  closeResched();
+  toast(`📅 Rescheduled from ${old} → ${newDate}`);
+}
 </script>
+
+<!-- Reschedule modal -->
+<div class="overlay" id="reschedOverlay" onclick="if(event.target===this)closeResched()">
+  <div class="modal" id="reschedModal">
+    <div class="modal-title">
+      <span id="reschedTitle">Reschedule Expense</span>
+      <button class="modal-close" onclick="closeResched()">✕</button>
+    </div>
+    <p id="reschedCurrent" style="font-size:13px;color:var(--g500);margin-bottom:14px"></p>
+    <div class="form-group">
+      <label class="form-label">New Due Date</label>
+      <input type="date" id="reschedDate" class="form-input">
+    </div>
+    <button class="btn-primary" style="width:100%;margin-top:16px" onclick="confirmResched()">📅 Confirm Reschedule</button>
+  </div>
+</div>
+
 </body>
 </html>
