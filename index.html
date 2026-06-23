@@ -930,45 +930,39 @@ function renderIncome() {
   const expSrcs = D.expectedIncome || [];
   const eEl = document.getElementById('expectedIncomeList');
 
-  if (!expSrcs.filter(s=>s.active).length) {
-    eEl.innerHTML = '<div class="empty"><div class="ico">💸</div><div class="txt">No expected income set.<br>Add sources in Settings or tap + → Income.</div></div>';
-  } else {
-    const totalExpected = expSrcs.filter(s=>s.active).reduce((s,src)=>{
-      const r = (D.incomeReceipts||{})[src.id+'_'+yyyymm];
-      return s + Number(r ? r.amount : src.defaultAmount);
-    }, 0);
-    const totalReceived = expSrcs.filter(s=>s.active).reduce((s,src)=>{
-      const r = (D.incomeReceipts||{})[src.id+'_'+yyyymm];
-      return r&&r.received ? s + Number(r.amount) : s;
-    }, 0);
+  const activeSrcs = expSrcs.filter(s=>s.active);
+  const totalExpected = activeSrcs.reduce((s,src)=>{ const r=(D.incomeReceipts||{})[src.id+'_'+yyyymm]; return s+Number(r?r.amount:src.defaultAmount); },0);
+  const totalReceived = activeSrcs.reduce((s,src)=>{ const r=(D.incomeReceipts||{})[src.id+'_'+yyyymm]; return r&&r.received?s+Number(r.amount):s; },0);
 
-    eEl.innerHTML = `
-      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--g200)">
-        <span style="color:var(--g500)">Expected: <strong style="color:var(--navy)">${fmtDRHM(totalExpected)}</strong></span>
-        <span style="color:var(--g500)">Received: <strong style="color:var(--green)">${fmtDRHM(totalReceived)}</strong></span>
-      </div>` +
-      expSrcs.filter(s=>s.active).map(src => {
-        const key = src.id + '_' + yyyymm;
-        const r = (D.incomeReceipts||{})[key];
-        const amt = r ? r.amount : src.defaultAmount;
-        const isRec = r && r.received;
-        return `<div class="inc-row">
-          <div class="li-icon" style="background:#e8f5e9;margin-right:10px">💰</div>
-          <div class="inc-source">
-            <div class="name">${src.source}</div>
-            <div class="sub">Expected day ${src.dom} · default ${fmtAED(src.defaultAmount)}</div>
+  eEl.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--g200)">
+      <span style="color:var(--g500)">Expected: <strong style="color:var(--navy)">${fmtDRHM(totalExpected)}</strong></span>
+      <span style="color:var(--g500)">Received: <strong style="color:var(--green)">${fmtDRHM(totalReceived)}</strong></span>
+    </div>` +
+    (activeSrcs.length ? activeSrcs.map(src => {
+      const key = src.id + '_' + yyyymm;
+      const r = (D.incomeReceipts||{})[key];
+      const amt = r ? r.amount : src.defaultAmount;
+      const isRec = r && r.received;
+      return `<div class="inc-row">
+        <div class="li-icon" style="background:#e8f5e9;margin-right:10px">💰</div>
+        <div class="inc-source">
+          <div class="name">${src.source}</div>
+          <div class="sub">Every month · day ${src.dom} · default ${fmtDRHM(src.defaultAmount,10)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span class="inc-amt" onclick="editReceiptAmt('${src.id}','${yyyymm}')" title="Override this month's amount">${fmtDRHM(amt,11)} ✏️</span>
+            <button class="ibtn" title="Edit source" onclick="editExpectedSrc('${src.id}')">⚙️</button>
+            <button class="ibtn" title="Delete source" onclick="delExpectedSrc('${src.id}')">🗑</button>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-            <div class="inc-amt-wrap">
-              <span class="inc-amt" onclick="editReceiptAmt('${src.id}','${yyyymm}')" title="Tap to override amount">${fmtDRHM(amt)} ✏️</span>
-            </div>
-            <button class="rec-btn${isRec?' received':''}" onclick="toggleReceipt('${src.id}','${yyyymm}')">
-              ${isRec ? '✅ Received' : '○ Not yet'}
-            </button>
-          </div>
-        </div>`;
-      }).join('');
-  }
+          <button class="rec-btn${isRec?' received':''}" onclick="toggleReceipt('${src.id}','${yyyymm}')">
+            ${isRec ? '✅ Received' : '○ Mark received'}
+          </button>
+        </div>
+      </div>`;
+    }).join('') : '<div style="color:var(--g500);font-size:13px;padding:8px 0">No active income sources.</div>') +
+    `<button onclick="addExpectedSrc()" style="margin-top:10px;width:100%;padding:9px;border:1.5px dashed var(--teal);border-radius:8px;background:none;color:var(--teal2);font-size:13px;font-weight:600;cursor:pointer">+ Add Income Source</button>`;
 
   // ── One-off / manual income ──
   const months = [...new Set(D.income.map(e=>e.date.slice(0,7)))].sort().reverse();
@@ -1353,7 +1347,17 @@ function toast(msg,dur=2400){ const t=document.getElementById('toast'); t.textCo
 //  SEED DEFAULT DATA (from spreadsheet)
 // ═══════════════════════════════════════════════
 function seedDefaults() {
-  if (D.recurring.length || D.income.length) return; // already seeded
+  // Re-seed expected income independently if missing
+  if (!D.expectedIncome || !D.expectedIncome.length) {
+    D.expectedIncome = [
+      { id: uid(), source: 'Ahmed Salary',   defaultAmount: 68000, dom: 1,  active: true },
+      { id: uid(), source: 'Diana Salary',   defaultAmount: 61000, dom: 1,  active: true },
+      { id: uid(), source: 'Somabay Rental', defaultAmount: 4000,  dom: 5,  active: true },
+      { id: uid(), source: 'Telal Rental',   defaultAmount: 16500, dom: 5,  active: true },
+    ];
+    save();
+  }
+  if (D.recurring.length || D.income.length) return; // rest already seeded
 
   // Recurring expenses
   const recDefs = [
@@ -1385,14 +1389,6 @@ function seedDefaults() {
     {id:uid(),name:'Hacienda Ras el Hekma — 1st',amount:58930,dueDate:'2026-06-15',category:'Investment',paid:false,remDays:7,note:'Installment 1'},
     {id:uid(),name:'Hacienda Ras el Hekma — 2nd',amount:94640,dueDate:'2026-09-15',category:'Investment',paid:false,remDays:14,note:'Installment 2'},
     {id:uid(),name:'Hacienda Ras el Hekma — 3rd',amount:16657,dueDate:'2026-11-15',category:'Investment',paid:false,remDays:14,note:'Installment 3'},
-  ];
-
-  // Expected recurring income sources
-  D.expectedIncome = [
-    { id: uid(), source: 'Ahmed Salary',   defaultAmount: 68000, dom: 1,  active: true },
-    { id: uid(), source: 'Diana Salary',   defaultAmount: 61000, dom: 1,  active: true },
-    { id: uid(), source: 'Somabay Rental', defaultAmount: 4000,  dom: 5,  active: true },
-    { id: uid(), source: 'Telal Rental',   defaultAmount: 16500, dom: 5,  active: true },
   ];
 
   save();
@@ -1559,6 +1555,51 @@ function mdTogglePaid(id) {
   renderMonthDetail();
 }
 
+// ── Expected Income Source add/edit ──
+function addExpectedSrc() {
+  document.getElementById('expSrcTitle').textContent = 'Add Income Source';
+  document.getElementById('esSrcName').value = '';
+  document.getElementById('esSrcAmt').value  = '';
+  document.getElementById('esSrcDom').value  = '1';
+  delete document.getElementById('expSrcOverlay').dataset.editId;
+  document.getElementById('expSrcOverlay').classList.add('show');
+}
+function editExpectedSrc(id) {
+  const src = (D.expectedIncome||[]).find(s=>s.id===id);
+  if (!src) return;
+  document.getElementById('expSrcTitle').textContent = 'Edit Income Source';
+  document.getElementById('esSrcName').value = src.source;
+  document.getElementById('esSrcAmt').value  = src.defaultAmount;
+  document.getElementById('esSrcDom').value  = src.dom;
+  document.getElementById('expSrcOverlay').dataset.editId = id;
+  document.getElementById('expSrcOverlay').classList.add('show');
+}
+function closeExpSrc() {
+  document.getElementById('expSrcOverlay').classList.remove('show');
+}
+function saveExpSrc() {
+  const name = document.getElementById('esSrcName').value.trim();
+  const amt  = parseFloat(document.getElementById('esSrcAmt').value);
+  const dom  = parseInt(document.getElementById('esSrcDom').value)||1;
+  if (!name || !amt) { toast('❌ Enter name and amount'); return; }
+  const editId = document.getElementById('expSrcOverlay').dataset.editId;
+  if (editId) {
+    const src = (D.expectedIncome||[]).find(s=>s.id===editId);
+    if (src) { src.source = name; src.defaultAmount = amt; src.dom = dom; }
+    toast('✅ Source updated');
+  } else {
+    if (!D.expectedIncome) D.expectedIncome = [];
+    D.expectedIncome.push({ id: uid(), source: name, defaultAmount: amt, dom, active: true });
+    toast('✅ Income source added');
+  }
+  save(); closeExpSrc(); render();
+}
+function delExpectedSrc(id) {
+  if (!confirm('Remove this income source?')) return;
+  D.expectedIncome = (D.expectedIncome||[]).filter(s=>s.id!==id);
+  save(); render(); toast('Removed');
+}
+
 // ── Reschedule modal ──
 function rescheduleOnce(id) {
   const exp = D.once.find(e=>e.id===id);
@@ -1598,6 +1639,29 @@ function confirmResched() {
       <button class="modal-close" onclick="document.getElementById('monthDetailOverlay').classList.remove('show')">✕</button>
     </div>
     <div id="monthDetailBody"></div>
+  </div>
+</div>
+
+<!-- Expected Income Source modal -->
+<div class="overlay" id="expSrcOverlay" onclick="if(event.target===this)closeExpSrc()">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="expSrcTitle">Income Source</span>
+      <button class="modal-close" onclick="closeExpSrc()">✕</button>
+    </div>
+    <div class="fg">
+      <label class="flbl">Source Name</label>
+      <input class="finput" id="esSrcName" placeholder="e.g. Ahmed Salary">
+    </div>
+    <div class="fg" style="margin-top:10px">
+      <label class="flbl">Default Monthly Amount (AED)</label>
+      <input class="finput" type="number" id="esSrcAmt" placeholder="68000">
+    </div>
+    <div class="fg" style="margin-top:10px">
+      <label class="flbl">Expected Day of Month</label>
+      <input class="finput" type="number" id="esSrcDom" placeholder="1" min="1" max="28">
+    </div>
+    <button class="btn btn-navy" style="width:100%;margin-top:16px" onclick="saveExpSrc()">Save Source</button>
   </div>
 </div>
 
