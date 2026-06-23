@@ -180,9 +180,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .fcard.next-month::before{background:var(--navy2)}
 .fcard .fc-month{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g500);margin-bottom:8px}
 .fcard .fc-cols{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
-.fcard .fc-stat{background:var(--g100);border-radius:8px;padding:8px 10px;text-align:center}
+.fcard .fc-stat{background:var(--g100);border-radius:8px;padding:8px 6px;text-align:center;min-width:0;overflow:hidden}
 .fcard .fc-stat-lbl{font-size:10px;color:var(--g500);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
-.fcard .fc-stat-num{font-size:17px;font-weight:800;line-height:1.1}
+.fcard .fc-stat-num{font-size:clamp(12px,3.8vw,16px);font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fcard .fc-stat-unit{font-size:9px;color:var(--g500);margin-top:2px;font-weight:500}
 .fcard .fc-net{display:flex;justify-content:space-between;align-items:center;margin-top:2px;padding-top:8px;border-top:1px solid var(--g200);font-size:13px;font-weight:700}
 .fcard .fc-tag{font-size:9px;background:var(--g200);color:var(--g500);padding:1px 5px;border-radius:8px;font-weight:600}
@@ -333,6 +333,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
           <button class="btn btn-gray" onclick="document.getElementById('importFile').click()">Import JSON</button>
         </div>
         <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      </div>
+    </div>
+    <div class="set-sec">
+      <div class="set-hdr">🔄 Reset Transactions</div>
+      <div class="set-item">
+        <p style="font-size:13px;color:var(--g500);margin-bottom:12px">Clears all received income, deductions, and paid expenses — keeps your expense templates and settings intact. Use this to start fresh from today.</p>
+        <button class="btn" style="width:100%;background:#fff3cd;color:#856404;border:1px solid #ffc107;font-weight:700" onclick="resetTransactions()">🗑 Clear All Transactions</button>
       </div>
     </div>
     <div style="text-align:center;padding:16px 0 4px;color:var(--g500);font-size:11px">Ahmed &amp; Diana — Household Tracker v1.0</div>
@@ -1051,6 +1058,9 @@ function renderExpenses() {
         : dl<0 ? '<span style="color:var(--red);font-weight:700;font-size:11px">OVERDUE</span>'
         : dl===0 ? '<span style="color:var(--red);font-weight:700;font-size:11px">TODAY</span>'
         : `<span style="color:var(--g500);font-size:11px">in ${dl}d</span>`;
+      const paidBtn = exp.paid
+        ? `<button class="ibtn" title="Undo paid" style="opacity:.7" onclick="togglePaid('${exp.id}')">↩</button>`
+        : `<button class="ibtn" title="Mark paid" onclick="togglePaid('${exp.id}')">✅</button>`;
       return `<div class="li ${cls}">
         <div class="li-icon" style="background:${CAT_BG[exp.category]||CAT_BG.Other}">${CAT_ICON[exp.category]||'📦'}</div>
         <div class="li-info">
@@ -1059,8 +1069,9 @@ function renderExpenses() {
         </div>
         <div style="display:flex;align-items:center;gap:2px">
           <div class="li-amt exp">${fmtDRHM(exp.amount)}</div>
+          <button class="ibtn" title="Edit" onclick="editOnce('${exp.id}')">✏️</button>
           ${!exp.paid?`<button class="ibtn" title="Reschedule date" onclick="rescheduleOnce('${exp.id}')">📅</button>`:''}
-          ${!exp.paid?`<button class="ibtn" title="Mark paid" onclick="markPaid('${exp.id}')">✅</button>`:''}
+          ${paidBtn}
           <button class="ibtn" onclick="delOnce('${exp.id}')">🗑</button>
         </div>
       </div>`;
@@ -1110,6 +1121,16 @@ async function saveFbConfig() {
   if (ok) render();
 }
 
+function resetTransactions() {
+  if (!confirm('This will clear all income receipts, deductions, and paid expenses.\n\nYour expense templates, income templates, and settings are kept.\n\nContinue?')) return;
+  D.income = [];
+  D.incomeReceipts = {};
+  D.deductions = {};
+  D.once.forEach(e => { e.paid = false; e.paidDate = null; });
+  save(); render();
+  toast('✅ All transactions cleared — balance reset to ' + fmtAED(D.config.initialBalance || 0));
+}
+
 function exportData() {
   const b = new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
   const u = URL.createObjectURL(b);
@@ -1144,7 +1165,11 @@ function openAdd() {
   document.getElementById('addOverlay').classList.add('show');
 }
 
-function closeAdd() { document.getElementById('addOverlay').classList.remove('show'); }
+function closeAdd() {
+  const o = document.getElementById('addOverlay');
+  o.classList.remove('show');
+  delete o.dataset.editId;
+}
 
 function setType(type) {
   curType = type;
@@ -1169,6 +1194,20 @@ function doSave(e) {
   const rem  = parseInt(document.getElementById('eRem').value);
   if (!name||!amt) { toast('Fill all required fields'); return; }
 
+  // ── Edit mode for one-time expenses ──
+  const editId = document.getElementById('addOverlay').dataset.editId;
+  if (editId) {
+    const exp = D.once.find(x=>x.id===editId);
+    if (exp) {
+      exp.name = name; exp.amount = amt; exp.dueDate = date;
+      exp.category = cat; exp.note = note; exp.remDays = rem;
+    }
+    delete document.getElementById('addOverlay').dataset.editId;
+    save(); closeAdd(); render();
+    toast('✅ Expense updated');
+    return;
+  }
+
   if (curType==='income') {
     D.income.push({ id:uid(), source:name, amount:amt, date:date||fmtDate(new Date()), note });
     toast('✅ Income added');
@@ -1190,7 +1229,33 @@ function doSave(e) {
 function delIncome(id)   { if(!confirm('Delete this income entry?'))return; D.income=D.income.filter(e=>e.id!==id); save(); render(); toast('Deleted'); }
 function delRecurring(id){ if(!confirm('Delete recurring expense?'))return; D.recurring=D.recurring.filter(e=>e.id!==id); save(); render(); toast('Deleted'); }
 function delOnce(id)     { if(!confirm('Delete this expense?'))return; D.once=D.once.filter(e=>e.id!==id); save(); render(); toast('Deleted'); }
-function markPaid(id)    { const e=D.once.find(x=>x.id===id); if(e){e.paid=true;e.paidDate=fmtDate(new Date());save();render();toast('✅ Marked paid');} }
+function togglePaid(id) {
+  const e = D.once.find(x=>x.id===id);
+  if (!e) return;
+  if (e.paid) {
+    e.paid = false; e.paidDate = null;
+    save(); render(); toast('↩ Unmarked — expense no longer deducted from balance');
+  } else {
+    e.paid = true; e.paidDate = fmtDate(new Date());
+    save(); render(); toast('✅ Marked paid — balance updated');
+  }
+}
+
+function editOnce(id) {
+  const e = D.once.find(x=>x.id===id);
+  if (!e) return;
+  // pre-fill the add modal in "once" mode, then swap save to update
+  setType('once');
+  document.getElementById('eName').value  = e.name;
+  document.getElementById('eAmt').value   = e.amount;
+  document.getElementById('eDate').value  = e.dueDate;
+  document.getElementById('eCat').value   = e.category || 'Other';
+  document.getElementById('eNote').value  = e.note || '';
+  document.getElementById('eRemDays').value = e.remDays || 3;
+  const overlay = document.getElementById('addOverlay');
+  overlay.dataset.editId = id;
+  overlay.classList.add('show');
+}
 
 // rescheduleOnce defined below near modal HTML
 
