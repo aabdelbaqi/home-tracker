@@ -174,18 +174,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 
 /* ── Forecast grid ── */
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.fcard{background:#fff;border-radius:var(--r);padding:14px 12px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.fcard{background:#fff;border-radius:var(--r);padding:14px 12px;box-shadow:var(--shadow);position:relative;overflow:hidden;cursor:pointer;transition:box-shadow .15s}
+.fcard:active{box-shadow:var(--shadow-lg)}
 .fcard::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
 .fcard.this-month::before{background:var(--teal)}
 .fcard.next-month::before{background:var(--navy2)}
-.fcard .fc-month{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g500);margin-bottom:8px}
-.fcard .fc-cols{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
-.fcard .fc-stat{background:var(--g100);border-radius:8px;padding:8px 6px;text-align:center;min-width:0;overflow:hidden}
-.fcard .fc-stat-lbl{font-size:10px;color:var(--g500);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
-.fcard .fc-stat-num{font-size:clamp(12px,3.8vw,16px);font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fcard .fc-stat-unit{font-size:9px;color:var(--g500);margin-top:2px;font-weight:500}
-.fcard .fc-net{display:flex;justify-content:space-between;align-items:center;margin-top:2px;padding-top:8px;border-top:1px solid var(--g200);font-size:13px;font-weight:700}
+.fcard .fc-month{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g500);margin-bottom:10px;display:flex;align-items:center;gap:5px}
 .fcard .fc-tag{font-size:9px;background:var(--g200);color:var(--g500);padding:1px 5px;border-radius:8px;font-weight:600}
+.fcard .fc-detail-link{margin-left:auto;font-size:10px;color:var(--teal2);font-weight:600}
+.fcard .fc-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 0}
+.fcard .fc-row-lbl{color:var(--g500);font-size:12px}
+.fcard .fc-row-val{font-weight:700;white-space:nowrap}
+.fcard .fc-net{display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:8px;border-top:1px solid var(--g200);font-size:13px;font-weight:700}
+/* ── Month detail interactive rows ── */
+.mdet-toggle-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--g200)18;gap:8px}
+.mdet-toggle-row:last-child{border-bottom:none}
+.mdet-toggle-info{flex:1;min-width:0}
+.mdet-toggle-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mdet-toggle-sub{font-size:11px;color:var(--g500);margin-top:1px}
+.mdet-toggle-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.mdet-toggle-amt{font-size:13px;font-weight:700;white-space:nowrap}
+.mdet-tbtn{width:32px;height:32px;border-radius:50%;border:2px solid var(--g200);background:#fff;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.mdet-tbtn.done{background:var(--green);border-color:var(--green);color:#fff}
 
 /* ── Segment toggle for expenses ── */
 .seg{display:flex;background:var(--g200);border-radius:var(--rs);padding:3px;gap:2px;margin-bottom:12px}
@@ -850,25 +860,21 @@ function renderDash() {
   const projNextEnd = projThisEnd + nextFC.net;
 
   function fcastCard(fc, projBal, cls, tag, year, month) {
-    const nc = fc.net>=0?'var(--green)':'var(--red)';
-    const pb = projBal>=0?'var(--green)':'var(--red)';
-    const fmtNum = (n) => (n>=0?'+':'')+Number(n).toLocaleString('en-AE',{maximumFractionDigits:0});
-    return `<div class="fcard ${cls}" onclick="showMonthDetail(${year},${month})" style="cursor:pointer">
-      <div class="fc-month">${fc.monthLabel} <span class="fc-tag">${tag}</span><span style="float:right;font-size:10px;color:var(--g500);margin-top:1px">Details ›</span></div>
-      <div class="fc-cols">
-        <div class="fc-stat">
-          <div class="fc-stat-lbl">Income</div>
-          <div class="fc-stat-num" style="color:var(--green)">${fc.income>0?fmtK(fc.income):'—'}</div>
-          <div class="fc-stat-unit">${drhmSvg(11,'var(--g500)')}</div>
-        </div>
-        <div class="fc-stat">
-          <div class="fc-stat-lbl">Expenses</div>
-          <div class="fc-stat-num" style="color:var(--red)">${fc.expenses>0?fmtK(-fc.expenses):'—'}</div>
-          <div class="fc-stat-unit">${drhmSvg(11,'var(--g500)')}</div>
-        </div>
+    const nc  = fc.net>=0?'var(--green)':'var(--red)';
+    const pb  = projBal>=0?'var(--green)':'var(--red)';
+    const incSign = fc.income>0?'+':'';
+    return `<div class="fcard ${cls}" onclick="showMonthDetail(${year},${month})">
+      <div class="fc-month">${fc.monthLabel} <span class="fc-tag">${tag}</span><span class="fc-detail-link">Details ›</span></div>
+      <div class="fc-row">
+        <span class="fc-row-lbl">↑ Income</span>
+        <span class="fc-row-val" style="color:var(--green)">${fc.income>0?incSign+fmtDRHM(fc.income,11):'—'}</span>
       </div>
-      <div class="fc-net"><span>Net forecast</span><span style="color:${nc}">${fmtNum(fc.net)} ${drhmSvg(12,nc)}</span></div>
-      <div style="margin-top:6px;font-size:11px;color:var(--g500)">Projected bal: <strong style="color:${pb}">${Number(projBal).toLocaleString('en-AE',{maximumFractionDigits:0})} ${drhmSvg(10,pb)}</strong></div>
+      <div class="fc-row">
+        <span class="fc-row-lbl">↓ Expenses</span>
+        <span class="fc-row-val" style="color:var(--red)">${fc.expenses>0?'−'+fmtDRHM(fc.expenses,11):'—'}</span>
+      </div>
+      <div class="fc-net"><span>Net</span><span style="color:${nc}">${(fc.net>=0?'+':'')+fmtDRHM(fc.net,12)}</span></div>
+      <div style="margin-top:5px;font-size:11px;color:var(--g500)">Projected bal: <strong style="color:${pb}">${fmtDRHM(projBal,10)}</strong></div>
     </div>`;
   }
   document.getElementById('forecastGrid').innerHTML =
@@ -1423,76 +1429,134 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 // ── Month Detail Modal ──
 const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+let _mdYear, _mdMonth; // remember current month for re-render after toggle
+
 function showMonthDetail(year, month) {
+  _mdYear = year; _mdMonth = month;
+  renderMonthDetail();
+  document.getElementById('monthDetailOverlay').classList.add('show');
+}
+
+function renderMonthDetail() {
+  const year = _mdYear, month = _mdMonth;
   const yyyymm = `${year}-${String(month+1).padStart(2,'0')}`;
   const first  = new Date(year, month, 1);
   const last   = new Date(year, month+1, 0);
-  const fc     = calcForecast(year, month);
 
-  // --- Expected income breakdown ---
-  let incRows = '';
-  let incTotal = 0;
+  // ── Income rows ──
+  let incRows = '', incTotal = 0, incReceived = 0;
   for (const src of D.expectedIncome || []) {
     if (!src.active) continue;
     const receipt = (D.incomeReceipts||{})[src.id+'_'+yyyymm];
     const amt = receipt ? Number(receipt.amount) : Number(src.defaultAmount);
-    const received = receipt && receipt.received;
+    const done = !!(receipt && receipt.received);
     incTotal += amt;
-    incRows += `<div class="mdet-row"><span>${src.source}</span><span style="color:${received?'var(--green)':'var(--navy)'}">
-      ${received?'✅ ':''}${fmtDRHM(amt,11)}</span></div>`;
+    if (done) incReceived += amt;
+    incRows += `<div class="mdet-toggle-row">
+      <div class="mdet-toggle-info">
+        <div class="mdet-toggle-name">${src.source}</div>
+        <div class="mdet-toggle-sub">${done ? '✅ Received' : 'Expected day ' + src.dom}</div>
+      </div>
+      <div class="mdet-toggle-right">
+        <span class="mdet-toggle-amt" style="color:${done?'var(--green)':'var(--navy)'}">${fmtDRHM(amt,11)}</span>
+        <button class="mdet-tbtn ${done?'done':''}" onclick="mdToggleReceipt('${src.id}','${yyyymm}')">${done?'✓':'○'}</button>
+      </div>
+    </div>`;
   }
-  // Manual income entries this month
+  // Manual one-off income this month
   const manual = D.income.filter(e=>{const d=new Date(e.date);return d>=first&&d<=last;});
   for (const e of manual) {
-    incTotal += Number(e.amount);
-    incRows += `<div class="mdet-row"><span>${e.source} <span style="font-size:10px;color:var(--g500)">(manual)</span></span><span style="color:var(--green)">${fmtDRHM(e.amount,11)}</span></div>`;
+    incTotal += Number(e.amount); incReceived += Number(e.amount);
+    incRows += `<div class="mdet-toggle-row">
+      <div class="mdet-toggle-info">
+        <div class="mdet-toggle-name">${e.source}</div>
+        <div class="mdet-toggle-sub" style="color:var(--g500)">Manual entry · ${e.date}</div>
+      </div>
+      <div class="mdet-toggle-right">
+        <span class="mdet-toggle-amt" style="color:var(--green)">${fmtDRHM(e.amount,11)}</span>
+      </div>
+    </div>`;
   }
 
-  // --- Expected expenses breakdown ---
-  let expRows = '';
-  let expTotal = 0;
-  // Recurring
+  // ── Expense rows ──
+  let expRows = '', expTotal = 0, expDeducted = 0;
   for (const exp of D.recurring) {
     if (!exp.active) continue;
     if (exp.endDate && new Date(exp.endDate) < first) continue;
     const key = exp.id+'_'+yyyymm;
-    const isDed = !!(D.deductions||{})[key];
+    const done = !!(D.deductions||{})[key];
     expTotal += Number(exp.amount);
-    expRows += `<div class="mdet-row"><span>${exp.name} <span style="font-size:10px;color:var(--g500)">recurring</span></span>
-      <span style="color:${isDed?'var(--red)':'var(--navy)'}"> ${isDed?'✅ ':''}${fmtDRHM(exp.amount,11)}</span></div>`;
+    if (done) expDeducted += Number(exp.amount);
+    expRows += `<div class="mdet-toggle-row">
+      <div class="mdet-toggle-info">
+        <div class="mdet-toggle-name">${exp.name}</div>
+        <div class="mdet-toggle-sub">${done ? '✅ Deducted' : 'Day '+exp.dom+' · recurring'}</div>
+      </div>
+      <div class="mdet-toggle-right">
+        <span class="mdet-toggle-amt" style="color:${done?'var(--red)':'var(--navy)'}">${fmtDRHM(exp.amount,11)}</span>
+        <button class="mdet-tbtn ${done?'done':''}" onclick="mdToggleDeduction('${exp.id}','${yyyymm}')">${done?'✓':'○'}</button>
+      </div>
+    </div>`;
   }
-  // One-time
   for (const exp of D.once) {
     const d = new Date(exp.dueDate);
     if (d<first||d>last) continue;
     expTotal += Number(exp.amount);
-    expRows += `<div class="mdet-row"><span>${exp.name} <span style="font-size:10px;color:var(--g500)">one-time</span></span>
-      <span style="color:${exp.paid?'var(--red)':'var(--navy)'}"> ${exp.paid?'✅ ':''}${fmtDRHM(exp.amount,11)}</span></div>`;
+    if (exp.paid) expDeducted += Number(exp.amount);
+    expRows += `<div class="mdet-toggle-row">
+      <div class="mdet-toggle-info">
+        <div class="mdet-toggle-name">${exp.name}</div>
+        <div class="mdet-toggle-sub">${exp.paid ? '✅ Paid' : 'Due '+exp.dueDate+' · one-time'}</div>
+      </div>
+      <div class="mdet-toggle-right">
+        <span class="mdet-toggle-amt" style="color:${exp.paid?'var(--red)':'var(--navy)'}">${fmtDRHM(exp.amount,11)}</span>
+        <button class="mdet-tbtn ${exp.paid?'done':''}" onclick="mdTogglePaid('${exp.id}')">${exp.paid?'✓':'○'}</button>
+      </div>
+    </div>`;
   }
 
   const net = incTotal - expTotal;
-  const nc  = net>=0 ? 'var(--green)' : 'var(--red)';
-  const netBg = net>=0 ? '#e8f5e9' : '#fdecea';
+  const actualNet = incReceived - expDeducted;
+  const nc  = net>=0?'var(--green)':'var(--red)';
+  const anc = actualNet>=0?'var(--green)':'var(--red)';
 
   document.getElementById('monthDetailTitle').textContent = `${MONTHS_FULL[month]} ${year}`;
   document.getElementById('monthDetailBody').innerHTML = `
     <div class="mdet-sec">
-      <div class="mdet-sec-title">💰 Expected Income</div>
-      ${incRows||'<div style="color:var(--g500);font-size:13px;padding:6px 0">No income sources</div>'}
-      <div class="mdet-total"><span>Total Income</span><span style="color:var(--green)">${fmtDRHM(incTotal)}</span></div>
+      <div class="mdet-sec-title">💰 Income — tap ○ to mark received</div>
+      ${incRows||'<div style="color:var(--g500);font-size:13px;padding:6px 0">No income sources configured</div>'}
+      <div class="mdet-total"><span>Total expected</span><span style="color:var(--green)">${fmtDRHM(incTotal)}</span></div>
     </div>
-    <div class="mdet-sec">
-      <div class="mdet-sec-title">💸 Expected Expenses</div>
-      ${expRows||'<div style="color:var(--g500);font-size:13px;padding:6px 0">No expenses</div>'}
-      <div class="mdet-total"><span>Total Expenses</span><span style="color:var(--red)">${fmtDRHM(expTotal)}</span></div>
+    <div class="mdet-sec" style="margin-top:14px">
+      <div class="mdet-sec-title">💸 Expenses — tap ○ to mark paid</div>
+      ${expRows||'<div style="color:var(--g500);font-size:13px;padding:6px 0">No expenses this month</div>'}
+      <div class="mdet-total"><span>Total expected</span><span style="color:var(--red)">${fmtDRHM(expTotal)}</span></div>
     </div>
-    <div class="mdet-net" style="background:${netBg}">
-      <span>Net for ${MONTHS_SHORT[month]}</span>
-      <span style="color:${nc}">${net>=0?'+':''}${fmtDRHM(net)}</span>
+    <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div style="background:#f0fdf4;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--g500);font-weight:700;text-transform:uppercase;margin-bottom:3px">Forecast Net</div>
+        <div style="font-size:15px;font-weight:800;color:${nc}">${net>=0?'+':''}${fmtDRHM(net,12)}</div>
+      </div>
+      <div style="background:#f8f9fa;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--g500);font-weight:700;text-transform:uppercase;margin-bottom:3px">Actual Net</div>
+        <div style="font-size:15px;font-weight:800;color:${anc}">${actualNet>=0?'+':''}${fmtDRHM(actualNet,12)}</div>
+      </div>
     </div>
-    <div style="margin-top:8px;font-size:11px;color:var(--g500);text-align:center">✅ = already recorded &nbsp;|&nbsp; tap items in Income/Expenses tabs to update</div>
   `;
-  document.getElementById('monthDetailOverlay').classList.add('show');
+}
+
+// Toggles that re-render the modal in place (no need to close)
+function mdToggleReceipt(srcId, yyyymm) {
+  toggleReceipt(srcId, yyyymm);
+  renderMonthDetail();
+}
+function mdToggleDeduction(expId, yyyymm) {
+  toggleDeduction(expId, yyyymm);
+  renderMonthDetail();
+}
+function mdTogglePaid(id) {
+  togglePaid(id);
+  renderMonthDetail();
 }
 
 // ── Reschedule modal ──
