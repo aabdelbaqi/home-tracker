@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Ahmed & Diana — Home Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1f44">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Home Tracker">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root {
+  --navy:#0f1f44; --navy2:#1a3060; --teal:#00c6c6; --teal2:#009999;
+  --white:#fff; --g100:#f7f8fa; --g200:#e9ecef; --g500:#6c757d; --g800:#343a40;
+  --green:#28a745; --red:#dc3545; --yellow:#ffc107; --orange:#fd7e14;
+  --shadow:0 2px 8px rgba(0,0,0,.08); --shadow-lg:0 8px 24px rgba(0,0,0,.14);
+  --r:12px; --rs:8px; --tab:64px; --hdr:60px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--g100);color:#1a1a2e;min-height:100vh;overflow-x:hidden}
+
+/* ── Header ── */
+.hdr{position:fixed;top:0;left:0;right:0;height:var(--hdr);background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.hdr-title{font-size:17px;font-weight:700;line-height:1.2}
+.hdr-sub{font-size:11px;opacity:.65;margin-top:1px}
+.hdr-bal .amt{font-size:20px;font-weight:700;color:var(--teal);text-align:right}
+.hdr-bal .lbl{font-size:10px;opacity:.65;text-align:right;text-transform:uppercase;letter-spacing:.5px;margin-top:1px;display:flex;align-items:center;justify-content:flex-end;gap:5px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;flex-shrink:0}
+.sync-dot.pulse{animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Content ── */
+.content{margin-top:var(--hdr);margin-bottom:var(--tab);padding:14px;min-height:calc(100vh - var(--hdr) - var(--tab))}
+
+/* ── Bottom nav ── */
+.nav{position:fixed;bottom:0;left:0;right:0;height:var(--tab);background:#fff;display:flex;border-top:1px solid var(--g200);z-index:100;box-shadow:0 -2px 12px rgba(0,0,0,.07)}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;cursor:pointer;color:var(--g500);font-size:10px;font-weight:500;padding:6px 4px;transition:color .15s;position:relative}
+.nav-btn.active{color:var(--navy)}
+.nav-btn svg{width:22px;height:22px;stroke-width:1.8}
+.nbadge{position:absolute;top:6px;right:calc(50% - 16px);background:var(--red);color:#fff;font-size:9px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px}
+
+/* ── Panels ── */
+.panel{display:none}.panel.active{display:block}
+
+/* ── Cards ── */
+.card{background:#fff;border-radius:var(--r);padding:14px;box-shadow:var(--shadow);margin-bottom:12px}
+.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--g500);margin-bottom:10px}
+
+/* ── Summary grid ── */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.scard{background:#fff;border-radius:var(--r);padding:14px 12px;box-shadow:var(--shadow);text-align:center}
+.scard .val{font-size:19px;font-weight:700;color:var(--navy)}
+.scard .val.pos{color:var(--green)}.scard .val.neg{color:var(--red)}.scard .val.teal{color:var(--teal2)}
+.scard .lbl{font-size:10px;color:var(--g500);margin-top:3px;text-transform:uppercase;letter-spacing:.4px}
+
+/* ── List items ── */
+.li{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--g200)}
+.li:last-child{border-bottom:none}
+.li-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;margin-right:11px}
+.li-info{flex:1;min-width:0}
+.li-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li-meta{font-size:11px;color:var(--g500);margin-top:2px}
+.li-amt{font-size:15px;font-weight:700;flex-shrink:0}
+.li-amt.inc{color:var(--green)}.li-amt.exp{color:var(--red)}
+
+/* ── Alerts ── */
+.alert{border-radius:var(--rs);padding:11px 13px;margin-bottom:9px;font-size:13px;display:flex;align-items:flex-start;gap:9px}
+.alert-icon{font-size:17px;flex-shrink:0;margin-top:1px}
+.alert-body{flex:1}
+.alert-title{font-weight:700;margin-bottom:2px}
+.alert-text{font-size:12px;opacity:.85}
+.alert-danger{background:#fff3f3;border-left:3px solid var(--red)}
+.alert-warning{background:#fffbf0;border-left:3px solid var(--yellow)}
+.alert-success{background:#f0fff4;border-left:3px solid var(--green)}
+.alert-info{background:#f0f8ff;border-left:3px solid var(--teal)}
+
+/* ── Progress ── */
+.prog-bar{height:6px;background:var(--g200);border-radius:3px;overflow:hidden;margin-top:7px}
+.prog-fill{height:100%;border-radius:3px;transition:width .5s}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:calc(var(--tab) + 14px);right:16px;width:54px;height:54px;border-radius:50%;background:var(--navy);color:#fff;border:none;font-size:28px;cursor:pointer;box-shadow:var(--shadow-lg);display:flex;align-items:center;justify-content:center;z-index:90;transition:transform .15s}
+.fab:active{transform:scale(.92)}
+
+/* ── Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;backdrop-filter:blur(3px)}
+.overlay.show{display:flex}
+.modal{background:#fff;border-radius:var(--r) var(--r) 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom));width:100%;max-height:92vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:700;color:var(--navy);margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:var(--g200);border:none;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+
+/* ── Forms ── */
+.fg{margin-bottom:14px}
+.flbl{font-size:12px;font-weight:700;color:var(--g500);margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:.4px}
+.finput,.fsel{width:100%;padding:11px 13px;border:2px solid var(--g200);border-radius:var(--rs);font-size:16px;color:#1a1a2e;background:#fff;transition:border-color .2s;outline:none;-webkit-appearance:none;appearance:none}
+.finput:focus,.fsel:focus{border-color:var(--navy)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ── Toggle ── */
+.tgl{display:flex;background:var(--g200);border-radius:var(--rs);padding:3px;gap:2px;margin-bottom:14px}
+.tgl-btn{flex:1;padding:8px 4px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;background:none;color:var(--g500);transition:all .2s;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.tgl-btn.active{background:#fff;color:var(--navy);font-weight:700;box-shadow:var(--shadow)}
+
+/* ── Buttons ── */
+.btn{width:100%;padding:13px;border-radius:var(--rs);border:none;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s}
+.btn:active{opacity:.8}
+.btn-navy{background:var(--navy);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-gray{background:var(--g200);color:var(--g800)}
+
+/* ── Section header ── */
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;margin-top:2px}
+.sh-title{font-size:15px;font-weight:700;color:var(--navy)}
+.sh-action{font-size:13px;color:var(--teal2);cursor:pointer;font-weight:600}
+
+/* ── Category pill ── */
+.pill{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700}
+.cat-Housing{background:#e3f2fd;color:#1565c0}
+.cat-Transport{background:#f3e5f5;color:#6a1b9a}
+.cat-Childcare{background:#fce4ec;color:#c62828}
+.cat-Education{background:#e8f5e9;color:#2e7d32}
+.cat-Utilities{background:#fff3e0;color:#e65100}
+.cat-Investment{background:#e0f7fa;color:#00695c}
+.cat-Loan{background:#fbe9e7;color:#bf360c}
+.cat-Other{background:var(--g200);color:var(--g800)}
+
+/* ── Month chips ── */
+.mchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px;overflow-x:auto;padding-bottom:2px}
+.mchip{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;border:2px solid var(--g200);cursor:pointer;background:#fff;color:var(--g500);white-space:nowrap}
+.mchip.active{border-color:var(--navy);background:var(--navy);color:#fff}
+
+/* ── Due status highlights ── */
+.due-soon{border-left:3px solid var(--yellow);padding-left:10px}
+.due-today{border-left:3px solid var(--red);padding-left:10px}
+.overdue{border-left:3px solid var(--red);padding-left:10px;background:#fff8f8}
+.paid-item{opacity:.55}
+
+/* ── Delete / action btns ── */
+.ibtn{background:none;border:none;cursor:pointer;padding:4px 7px;font-size:16px;opacity:.55;line-height:1}
+.ibtn:active{opacity:1}
+
+/* ── Empty state ── */
+.empty{text-align:center;padding:36px 20px;color:var(--g500)}
+.empty .ico{font-size:36px;margin-bottom:10px}
+.empty .txt{font-size:14px;line-height:1.5}
+
+/* ── Mini chart ── */
+.chart{display:flex;align-items:flex-end;gap:3px;height:72px}
+.chart-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.chart-bars{display:flex;align-items:flex-end;gap:1px;width:100%}
+.bar{border-radius:3px 3px 0 0;min-height:3px;flex:1;transition:height .5s}
+.chart-lbl{font-size:9px;color:var(--g500);text-align:center}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:calc(var(--tab) + 74px);left:50%;transform:translateX(-50%);background:var(--g800);color:#fff;padding:10px 18px;border-radius:30px;font-size:13px;z-index:300;opacity:0;transition:opacity .25s;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1}
+
+/* ── Settings ── */
+.set-sec{margin-bottom:22px}
+.set-hdr{font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.set-item{background:#fff;border-radius:var(--rs);padding:13px 14px;margin-bottom:8px;box-shadow:var(--shadow)}
+.set-lbl{font-size:14px;font-weight:700;margin-bottom:3px}
+.set-desc{font-size:12px;color:var(--g500);margin-bottom:9px;line-height:1.5}
+
+/* ── Recurring end badge ── */
+.ends-badge{font-size:10px;background:#e3f2fd;color:#1565c0;padding:1px 5px;border-radius:8px;font-weight:600;margin-left:4px}
+
+/* ── Segment toggle for expenses ── */
+.seg{display:flex;background:var(--g200);border-radius:var(--rs);padding:3px;gap:2px;margin-bottom:12px}
+.seg-btn{flex:1;padding:8px;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;background:none;color:var(--g500);transition:all .2s}
+.seg-btn.active{background:#fff;color:var(--navy);box-shadow:var(--shadow)}
+
+@media(min-width:600px){.content{max-width:480px;margin-left:auto;margin-right:auto}.hdr,.nav,.fab{max-width:480px;left:50%;transform:translateX(-50%)}.overlay{justify-content:center}.modal{border-radius:var(--r);margin-bottom:40px;max-width:480px}}
+</style>
+</head>
+<body>
+
+<!-- ─── HEADER ─── -->
+<header class="hdr">
+  <div>
+    <div class="hdr-title">🏠 Home Tracker</div>
+    <div class="hdr-sub">Ahmed &amp; Diana · 2026</div>
+  </div>
+  <div class="hdr-bal">
+    <div class="amt" id="hdrBal">—</div>
+    <div class="lbl">Balance <span class="sync-dot" id="syncDot"></span></div>
+  </div>
+</header>
+
+<!-- ─── MAIN CONTENT ─── -->
+<main class="content">
+
+  <!-- DASHBOARD -->
+  <div class="panel active" id="panel-dashboard">
+    <div id="alerts"></div>
+    <div class="sgrid">
+      <div class="scard"><div class="val teal" id="sumIncome">—</div><div class="lbl">Income This Month</div></div>
+      <div class="scard"><div class="val neg" id="sumExpenses">—</div><div class="lbl">Expenses This Month</div></div>
+      <div class="scard"><div class="val" id="sumNet">—</div><div class="lbl">Net This Month</div></div>
+      <div class="scard"><div class="val" id="sumBalance">—</div><div class="lbl">Running Balance</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Monthly Budget Usage</div>
+      <div id="budgetBar"></div>
+    </div>
+    <div class="sh"><div class="sh-title">📅 Next 30 Days</div></div>
+    <div class="card" id="upcomingPreview"></div>
+    <div class="sh" style="margin-top:4px"><div class="sh-title">📊 Cash Flow (6mo)</div></div>
+    <div class="card"><div class="chart" id="miniChart"></div></div>
+  </div>
+
+  <!-- INCOME -->
+  <div class="panel" id="panel-income">
+    <div class="sh"><div class="sh-title">Income Log</div><div class="sh-action" id="incomeTot"></div></div>
+    <div class="mchips" id="incomeMonths"></div>
+    <div class="card" id="incomeList"></div>
+  </div>
+
+  <!-- EXPENSES -->
+  <div class="panel" id="panel-expenses">
+    <div class="seg">
+      <button class="seg-btn active" id="segRecurring" onclick="showExpSeg('recurring')">🔄 Recurring</button>
+      <button class="seg-btn" id="segUpcoming" onclick="showExpSeg('upcoming')">📋 One-Time</button>
+    </div>
+    <div id="recurringView">
+      <div class="sh"><div class="sh-title">Monthly Recurring</div><div class="sh-action" id="recurTotal"></div></div>
+      <div class="card" id="recurList"></div>
+    </div>
+    <div id="upcomingView" style="display:none">
+      <div class="sh"><div class="sh-title">One-Time &amp; Upcoming</div></div>
+      <div class="card" id="upcomingList"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="panel" id="panel-settings">
+    <div class="set-sec">
+      <div class="set-hdr">💰 Starting Balance</div>
+      <div class="set-item">
+        <div class="set-lbl">Initial Balance (AED)</div>
+        <div class="set-desc">Your account balance on the tracking start date. This is added to all recorded income minus all due expenses to calculate your running balance.</div>
+        <input type="number" class="finput" id="cfgInitBal" placeholder="e.g. 0">
+        <div class="fg" style="margin-top:8px">
+          <label class="flbl">Tracking Start Date</label>
+          <input type="date" class="finput" id="cfgStartDate">
+        </div>
+        <button class="btn btn-navy" onclick="saveBalConfig()">Save</button>
+      </div>
+    </div>
+    <div class="set-sec">
+      <div class="set-hdr">🔔 Push Notifications — ntfy.sh</div>
+      <div class="set-item">
+        <div class="set-lbl">Your Private Topic</div>
+        <div class="set-desc">Pick a unique private name (e.g. <code>abdelbaky-home-2026</code>). Both you and Diana install the free <strong>ntfy</strong> app (iOS &amp; Android) and subscribe to this exact topic. The app sends alerts here when bills are due.</div>
+        <input type="text" class="finput" id="cfgNtfy" placeholder="your-private-topic-name">
+        <button class="btn btn-navy" style="margin-top:8px" onclick="saveNtfy()">Save Topic</button>
+      </div>
+      <div class="set-item">
+        <div class="set-lbl">Test Notification</div>
+        <div class="set-desc">Send a test push to confirm both phones are receiving alerts.</div>
+        <button class="btn btn-green" onclick="testNotif()">📨 Send Test to Both Phones</button>
+      </div>
+    </div>
+    <div class="set-sec">
+      <div class="set-hdr">☁️ Cloud Sync — Firebase</div>
+      <div class="set-item">
+        <div class="set-lbl">Realtime Database URL</div>
+        <div class="set-desc">Optional: keeps both phones in sync instantly. <a href="https://console.firebase.google.com" target="_blank" style="color:var(--teal2);font-weight:600">Create free Firebase project →</a><br><br>In your project: enable <em>Realtime Database</em>, set rules to <code>".read":true, ".write":true</code> (private topic protects data), then paste URL + secret below.</div>
+        <input type="text" class="finput" id="cfgFbUrl" placeholder="https://your-project-default-rtdb.firebaseio.com">
+        <div class="fg" style="margin-top:8px">
+          <label class="flbl">Database Secret (legacy token)</label>
+          <input type="text" class="finput" id="cfgFbSecret" placeholder="Database secret from Project settings → Service accounts">
+        </div>
+        <button class="btn btn-navy" onclick="saveFbConfig()">Connect &amp; Sync</button>
+        <div id="fbStatus" style="font-size:12px;color:var(--g500);margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="set-sec">
+      <div class="set-hdr">📤 Backup &amp; Restore</div>
+      <div class="set-item">
+        <div class="frow">
+          <button class="btn btn-navy" onclick="exportData()">Export JSON</button>
+          <button class="btn btn-gray" onclick="document.getElementById('importFile').click()">Import JSON</button>
+        </div>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      </div>
+    </div>
+    <div style="text-align:center;padding:16px 0 4px;color:var(--g500);font-size:11px">Ahmed &amp; Diana — Household Tracker v1.0</div>
+  </div>
+
+</main>
+
+<!-- ─── BOTTOM NAV ─── -->
+<nav class="nav">
+  <button class="nav-btn active" id="nav-dashboard" onclick="goTab('dashboard')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Dashboard
+  </button>
+  <button class="nav-btn" id="nav-income" onclick="goTab('income')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    Income
+  </button>
+  <button class="nav-btn" id="nav-expenses" onclick="goTab('expenses')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 4H8l-1.5 8h15L21 4z"/><path d="M6.5 12L5 20H19"/><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/></svg>
+    Expenses
+    <span class="nbadge" id="expBadge">0</span>
+  </button>
+  <button class="nav-btn" id="nav-settings" onclick="goTab('settings')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Settings
+  </button>
+</nav>
+
+<button class="fab" onclick="openAdd()">＋</button>
+
+<!-- ─── ADD MODAL ─── -->
+<div class="overlay" id="addOverlay" onclick="if(event.target===this)closeAdd()">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="addTitle">Add Entry</span>
+      <button class="modal-close" onclick="closeAdd()">✕</button>
+    </div>
+    <div class="tgl" id="typeTgl">
+      <button class="tgl-btn active" onclick="setType('income')">💰 Income</button>
+      <button class="tgl-btn" onclick="setType('once')">📋 One-Time Exp</button>
+      <button class="tgl-btn" onclick="setType('recurring')">🔄 Recurring</button>
+    </div>
+    <form onsubmit="doSave(event)">
+      <div class="fg">
+        <label class="flbl" id="nameLbl">Source</label>
+        <input class="finput" id="eName" placeholder="e.g. Ahmed Salary" required autocomplete="off">
+      </div>
+      <div class="fg">
+        <label class="flbl">Amount (AED)</label>
+        <input type="number" class="finput" id="eAmt" placeholder="0" min="0" step="0.01" required>
+      </div>
+      <div class="fg" id="dateGrp">
+        <label class="flbl" id="dateLbl">Date</label>
+        <input type="date" class="finput" id="eDate" required>
+      </div>
+      <div class="fg" id="catGrp" style="display:none">
+        <label class="flbl">Category</label>
+        <select class="fsel" id="eCat">
+          <option value="Housing">🏠 Housing</option>
+          <option value="Transport">🚗 Transport</option>
+          <option value="Childcare">👶 Childcare</option>
+          <option value="Education">📚 Education</option>
+          <option value="Utilities">⚡ Utilities</option>
+          <option value="Investment">💼 Investment</option>
+          <option value="Loan">🏦 Loan</option>
+          <option value="Other">📦 Other</option>
+        </select>
+      </div>
+      <div id="recurGrp" style="display:none">
+        <div class="frow">
+          <div class="fg">
+            <label class="flbl">Day of Month</label>
+            <input type="number" class="finput" id="eDom" placeholder="1" min="1" max="31" value="1">
+          </div>
+          <div class="fg">
+            <label class="flbl">End Date</label>
+            <input type="date" class="finput" id="eEnd">
+          </div>
+        </div>
+      </div>
+      <div class="fg" id="remGrp" style="display:none">
+        <label class="flbl">Remind (days before)</label>
+        <select class="fsel" id="eRem">
+          <option value="1">1 day before</option>
+          <option value="3" selected>3 days before</option>
+          <option value="7">1 week before</option>
+          <option value="14">2 weeks before</option>
+          <option value="0">No reminder</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="flbl">Note (optional)</label>
+        <input class="finput" id="eNote" placeholder="Optional note…">
+      </div>
+      <button type="submit" class="btn btn-navy">Save Entry</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════
+const LS_KEY = 'hh_tracker_v3';
+const NOTIF_KEY = 'hh_notified';
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ═══════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════
+function emptyData() {
+  return {
+    config: { initialBalance: 0, startDate: '2026-01-01', ntfyTopic: '', fbUrl: '', fbSecret: '' },
+    income: [],      // { id, source, amount, date, note }
+    recurring: [],   // { id, name, amount, category, dom, endDate, remDays, active }
+    once: [],        // { id, name, amount, dueDate, category, paid, paidDate, remDays, note }
+  };
+}
+
+let D = emptyData();
+let curTab = 'dashboard';
+let curExpSeg = 'recurring';
+let curIncMonth = null;
+let curType = 'income';
+
+// ═══════════════════════════════════════════════
+//  PERSISTENCE  (localStorage + Firebase REST)
+// ═══════════════════════════════════════════════
+function load() {
+  try { const r = localStorage.getItem(LS_KEY); if(r) D = {...emptyData(),...JSON.parse(r)}; }
+  catch(_) {}
+}
+
+function save() {
+  localStorage.setItem(LS_KEY, JSON.stringify(D));
+  pushFirebase();
+}
+
+// Firebase REST (no SDK needed)
+let fbPushTimer = null;
+function pushFirebase() {
+  if (!D.config.fbUrl || !D.config.fbSecret) return;
+  clearTimeout(fbPushTimer);
+  fbPushTimer = setTimeout(async () => {
+    setSyncDot('pulse');
+    try {
+      const url = D.config.fbUrl.replace(/\/$/, '') + '/household.json?auth=' + D.config.fbSecret;
+      await fetch(url, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(D) });
+      setSyncDot('green');
+    } catch(_) { setSyncDot('red'); }
+  }, 800);
+}
+
+async function pullFirebase() {
+  if (!D.config.fbUrl || !D.config.fbSecret) { setSyncDot('gray'); return; }
+  setSyncDot('pulse');
+  try {
+    const url = D.config.fbUrl.replace(/\/$/, '') + '/household.json?auth=' + D.config.fbSecret;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error();
+    const remote = await res.json();
+    if (remote && typeof remote === 'object') {
+      D = {...emptyData(), ...remote};
+      localStorage.setItem(LS_KEY, JSON.stringify(D));
+    }
+    setSyncDot('green');
+    return true;
+  } catch(_) { setSyncDot('red'); return false; }
+}
+
+function setSyncDot(state) {
+  const el = document.getElementById('syncDot');
+  if (!el) return;
+  el.classList.remove('pulse');
+  if (state === 'pulse') { el.style.background='var(--yellow)'; el.classList.add('pulse'); }
+  else if (state === 'green') el.style.background = 'var(--green)';
+  else if (state === 'red') el.style.background = 'var(--red)';
+  else el.style.background = 'var(--g500)';
+}
+
+// ═══════════════════════════════════════════════
+//  BALANCE CALCULATION
+//  balance = initialBalance + income(from startDate) - recurringDue(from startDate) - onceDue
+// ═══════════════════════════════════════════════
+function today0() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+
+function calcBalance() {
+  const now = today0();
+  const start = new Date(D.config.startDate || '2026-01-01');
+  let bal = Number(D.config.initialBalance) || 0;
+
+  // Income recorded
+  for (const e of D.income) {
+    const d = new Date(e.date);
+    if (d >= start && d <= now) bal += Number(e.amount);
+  }
+
+  // Recurring expenses — each month from start to now
+  for (const exp of D.recurring) {
+    if (!exp.active) continue;
+    let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cur <= now) {
+      const dom = exp.dom || 1;
+      const due = new Date(cur.getFullYear(), cur.getMonth(), dom);
+      if (due >= start && due <= now) {
+        if (exp.endDate && due > new Date(exp.endDate)) { cur.setMonth(cur.getMonth()+1); continue; }
+        bal -= Number(exp.amount);
+      }
+      cur.setMonth(cur.getMonth() + 1);
+    }
+  }
+
+  // One-time expenses that are due/paid
+  for (const exp of D.once) {
+    const due = new Date(exp.dueDate);
+    if (due <= now || exp.paid) {
+      bal -= Number(exp.amount);
+      // auto-mark paid
+      if (!exp.paid && due <= now) { exp.paid = true; exp.paidDate = fmtDate(now); }
+    }
+  }
+
+  return bal;
+}
+
+function thisMonthTotals() {
+  const now = today0();
+  const y = now.getFullYear(), m = now.getMonth();
+  const first = new Date(y, m, 1), last = new Date(y, m+1, 0);
+  let income = 0, expenses = 0;
+
+  for (const e of D.income) {
+    const d = new Date(e.date);
+    if (d >= first && d <= last) income += Number(e.amount);
+  }
+  for (const exp of D.recurring) {
+    if (!exp.active) continue;
+    if (exp.endDate && new Date(exp.endDate) < first) continue;
+    expenses += Number(exp.amount);
+  }
+  for (const exp of D.once) {
+    const d = new Date(exp.dueDate);
+    if (d >= first && d <= last) expenses += Number(exp.amount);
+  }
+  return { income, expenses };
+}
+
+function sixMonthChart() {
+  const now = today0();
+  return Array.from({length:6}, (_,i) => {
+    const d = new Date(now.getFullYear(), now.getMonth()-5+i, 1);
+    const y = d.getFullYear(), m = d.getMonth();
+    const first = new Date(y,m,1), last = new Date(y,m+1,0);
+    let income=0, expenses=0;
+    for (const e of D.income) {
+      const ed = new Date(e.date);
+      if (ed>=first&&ed<=last) income += Number(e.amount);
+    }
+    for (const exp of D.recurring) {
+      if (!exp.active) continue;
+      if (exp.endDate && new Date(exp.endDate)<first) continue;
+      if (first >= new Date(D.config.startDate||'2026-01-01')) expenses += Number(exp.amount);
+    }
+    for (const exp of D.once) {
+      const ed = new Date(exp.dueDate);
+      if (ed>=first&&ed<=last) expenses += Number(exp.amount);
+    }
+    return { label: MONTHS_SHORT[m], income, expenses };
+  });
+}
+
+function upcomingN(days=30) {
+  const now = today0();
+  const future = new Date(now); future.setDate(future.getDate()+days);
+  const list = [];
+
+  for (const exp of D.once) {
+    if (exp.paid) continue;
+    const d = new Date(exp.dueDate);
+    const dl = Math.round((d-now)/86400000);
+    if (dl <= days) list.push({...exp, type:'once', daysLeft:dl});
+  }
+  for (const exp of D.recurring) {
+    if (!exp.active) continue;
+    if (exp.endDate && new Date(exp.endDate) < now) continue;
+    const dom = exp.dom || 1;
+    const thisM = new Date(now.getFullYear(), now.getMonth(), dom);
+    const nextM = new Date(now.getFullYear(), now.getMonth()+1, dom);
+    for (const due of [thisM, nextM]) {
+      const dl = Math.round((due-now)/86400000);
+      if (dl >= 0 && dl <= days) {
+        list.push({...exp, dueDate:fmtDate(due), type:'recurring', daysLeft:dl});
+        break;
+      }
+    }
+  }
+  return list.sort((a,b)=>a.daysLeft-b.daysLeft);
+}
+
+// ═══════════════════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════════════════
+async function checkNotifs() {
+  const now = today0();
+  const notified = JSON.parse(localStorage.getItem(NOTIF_KEY)||'{}');
+  const toSend = [];
+
+  for (const exp of D.once) {
+    if (exp.paid) continue;
+    const due = new Date(exp.dueDate);
+    const dl = Math.round((due-now)/86400000);
+    const rem = Number(exp.remDays)||3;
+    const key = `once_${exp.id}_${exp.dueDate}`;
+    if (dl <= rem && dl >= 0 && !notified[key]) {
+      toSend.push({ key, title: dl===0 ? `🔴 Due TODAY: ${exp.name}` : `⏰ Due in ${dl}d: ${exp.name}`, body: `AED ${fmt(exp.amount)}  ·  ${exp.category||'Expense'}`, pri: dl===0?'urgent':'default' });
+    }
+    const okey = `over_${exp.id}`;
+    if (dl < 0 && !notified[okey]) {
+      toSend.push({ key:okey, title:`🚨 OVERDUE: ${exp.name}`, body:`AED ${fmt(exp.amount)} was due ${Math.abs(dl)}d ago`, pri:'urgent' });
+    }
+  }
+  for (const exp of D.recurring) {
+    if (!exp.active) continue;
+    const due = new Date(now.getFullYear(), now.getMonth(), exp.dom||1);
+    const dl = Math.round((due-now)/86400000);
+    const rem = Number(exp.remDays)||3;
+    const key = `rec_${exp.id}_${now.getFullYear()}_${now.getMonth()}`;
+    if (dl <= rem && dl >= 0 && !notified[key]) {
+      toSend.push({ key, title: dl===0 ? `📅 Due today: ${exp.name}` : `📅 Due in ${dl}d: ${exp.name}`, body: `AED ${fmt(exp.amount)}/mo  ·  ${exp.category||'Recurring'}`, pri:'default' });
+    }
+  }
+
+  for (const n of toSend) {
+    await pushNotif(n.title, n.body, n.pri);
+    notified[n.key] = new Date().toISOString();
+  }
+  if (toSend.length) localStorage.setItem(NOTIF_KEY, JSON.stringify(notified));
+  return toSend;
+}
+
+async function pushNotif(title, body, priority='default') {
+  // Browser notification
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification(title, { body, icon:'icon-192.png', badge:'icon-192.png' }); } catch(_) {}
+  }
+  // ntfy.sh
+  const topic = D.config.ntfyTopic;
+  if (!topic) return;
+  try {
+    await fetch(`https://ntfy.sh/${topic}`, {
+      method:'POST',
+      headers:{ 'Title': title, 'Priority': priority, 'Tags':'house,money,bell' },
+      body
+    });
+  } catch(_) {}
+}
+
+async function reqNotifPerm() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  FORMATTING
+// ═══════════════════════════════════════════════
+function fmt(n) { return Number(n).toLocaleString('en-AE',{maximumFractionDigits:0}); }
+function fmtAED(n) { return 'AED ' + fmt(n); }
+function fmtDate(d) { return d instanceof Date ? d.toISOString().split('T')[0] : d; }
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+
+const CAT_ICON = { Housing:'🏠', Transport:'🚗', Childcare:'👶', Education:'📚', Utilities:'⚡', Investment:'💼', Loan:'🏦', Other:'📦' };
+const CAT_BG   = { Housing:'#e3f2fd', Transport:'#f3e5f5', Childcare:'#fce4ec', Education:'#e8f5e9', Utilities:'#fff3e0', Investment:'#e0f7fa', Loan:'#fbe9e7', Other:'#f5f5f5' };
+
+// ═══════════════════════════════════════════════
+//  TAB ROUTING
+// ═══════════════════════════════════════════════
+function goTab(tab) {
+  curTab = tab;
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`panel-${tab}`).classList.add('active');
+  document.getElementById(`nav-${tab}`).classList.add('active');
+  render();
+}
+
+function showExpSeg(seg) {
+  curExpSeg = seg;
+  document.getElementById('recurringView').style.display = seg==='recurring' ? 'block' : 'none';
+  document.getElementById('upcomingView').style.display  = seg==='upcoming'  ? 'block' : 'none';
+  document.getElementById('segRecurring').classList.toggle('active', seg==='recurring');
+  document.getElementById('segUpcoming').classList.toggle('active', seg==='upcoming');
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER DISPATCH
+// ═══════════════════════════════════════════════
+function render() {
+  updateHeader();
+  if (curTab==='dashboard') renderDash();
+  if (curTab==='income')    renderIncome();
+  if (curTab==='expenses')  renderExpenses();
+  if (curTab==='settings')  renderSettings();
+  updateBadge();
+}
+
+function updateHeader() {
+  const bal = calcBalance();
+  const el = document.getElementById('hdrBal');
+  el.textContent = fmtAED(bal);
+  el.style.color = bal >= 0 ? 'var(--teal)' : 'var(--red)';
+}
+
+function updateBadge() {
+  const now = today0();
+  let n = 0;
+  for (const exp of D.once) {
+    if (!exp.paid) { const dl = Math.round((new Date(exp.dueDate)-now)/86400000); if(dl<=3) n++; }
+  }
+  const badge = document.getElementById('expBadge');
+  badge.textContent = n;
+  badge.style.display = n > 0 ? 'flex' : 'none';
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER DASHBOARD
+// ═══════════════════════════════════════════════
+function renderDash() {
+  const bal = calcBalance();
+  const {income, expenses} = thisMonthTotals();
+  const net = income - expenses;
+  const upcoming = upcomingN(30);
+  const overdue  = upcoming.filter(u=>u.daysLeft<0);
+  const dueSoon  = upcoming.filter(u=>u.daysLeft>=0&&u.daysLeft<=3);
+
+  document.getElementById('sumIncome').textContent   = fmtAED(income);
+  document.getElementById('sumExpenses').textContent = fmtAED(expenses);
+  const netEl = document.getElementById('sumNet');
+  netEl.textContent = (net>=0?'+':'')+fmtAED(net);
+  netEl.className = 'val ' + (net>=0?'pos':'neg');
+  const balEl = document.getElementById('sumBalance');
+  balEl.textContent = fmtAED(bal);
+  balEl.className = 'val ' + (bal>=0?'pos':'neg');
+
+  // Alerts
+  const aEl = document.getElementById('alerts');
+  aEl.innerHTML = '';
+  if (overdue.length) aEl.innerHTML += `<div class="alert alert-danger"><div class="alert-icon">🚨</div><div class="alert-body"><div class="alert-title">${overdue.length} Overdue Payment${overdue.length>1?'s':''}</div><div class="alert-text">${overdue.map(e=>e.name).join(' · ')}</div></div></div>`;
+  if (dueSoon.length) aEl.innerHTML += `<div class="alert alert-warning"><div class="alert-icon">⏰</div><div class="alert-body"><div class="alert-title">${dueSoon.length} Due Very Soon</div><div class="alert-text">${dueSoon.map(e=>`${e.name} (${e.daysLeft===0?'today':e.daysLeft+'d'})`).join(' · ')}</div></div></div>`;
+
+  // Budget bar
+  const pct = income>0 ? Math.min(100,(expenses/income)*100) : 0;
+  const col = pct>90?'var(--red)':pct>70?'var(--yellow)':'var(--green)';
+  document.getElementById('budgetBar').innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+      <span style="color:var(--red)">Spent: ${fmtAED(expenses)}</span>
+      <span style="color:var(--teal2)">Income: ${fmtAED(income)}</span>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${pct.toFixed(0)}%;background:${col}"></div></div>
+    <div style="text-align:right;font-size:11px;margin-top:4px;color:var(--g500)">${pct.toFixed(0)}% of income</div>`;
+
+  // Upcoming preview
+  const upEl = document.getElementById('upcomingPreview');
+  if (!upcoming.length) {
+    upEl.innerHTML = '<div class="empty"><div class="ico">✅</div><div class="txt">No expenses in the next 30 days</div></div>';
+  } else {
+    upEl.innerHTML = upcoming.slice(0,5).map(exp => {
+      const cls = exp.daysLeft<0?'overdue':exp.daysLeft===0?'due-today':exp.daysLeft<=3?'due-soon':'';
+      const dlLbl = exp.daysLeft<0?`${Math.abs(exp.daysLeft)}d overdue`:exp.daysLeft===0?'TODAY':`in ${exp.daysLeft}d`;
+      const dlCol = exp.daysLeft<=0?'var(--red)':exp.daysLeft<=3?'var(--orange)':'var(--g500)';
+      return `<div class="li ${cls}">
+        <div class="li-icon" style="background:${CAT_BG[exp.category]||CAT_BG.Other}">${CAT_ICON[exp.category]||'📦'}</div>
+        <div class="li-info">
+          <div class="li-name">${exp.name}${exp.type==='recurring'?'<span class="ends-badge">recurring</span>':''}</div>
+          <div class="li-meta">${exp.dueDate} · <span style="color:${dlCol};font-weight:700">${dlLbl}</span></div>
+        </div>
+        <div class="li-amt exp">${fmtAED(exp.amount)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Mini chart
+  const chart = sixMonthChart();
+  const maxV = Math.max(...chart.map(m=>Math.max(m.income,m.expenses)),1);
+  document.getElementById('miniChart').innerHTML = chart.map(m => {
+    const iH = Math.max(3,(m.income/maxV)*62);
+    const eH = Math.max(3,(m.expenses/maxV)*62);
+    return `<div class="chart-col">
+      <div class="chart-bars"><div class="bar" style="height:${iH}px;background:var(--teal)"></div><div class="bar" style="height:${eH}px;background:var(--red);opacity:.7"></div></div>
+      <div class="chart-lbl">${m.label}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER INCOME
+// ═══════════════════════════════════════════════
+function renderIncome() {
+  const months = [...new Set(D.income.map(e=>e.date.slice(0,7)))].sort().reverse();
+  if (!curIncMonth && months.length) curIncMonth = months[0];
+
+  // Month chips
+  const mEl = document.getElementById('incomeMonths');
+  mEl.innerHTML = months.map(m => {
+    const [y,mo] = m.split('-');
+    const lbl = MONTHS_SHORT[parseInt(mo)-1] + ' ' + y.slice(2);
+    return `<div class="mchip${curIncMonth===m?' active':''}" onclick="selIncMonth('${m}')">${lbl}</div>`;
+  }).join('');
+
+  const filtered = curIncMonth ? D.income.filter(e=>e.date.startsWith(curIncMonth)) : D.income;
+  const total = filtered.reduce((s,e)=>s+Number(e.amount),0);
+  document.getElementById('incomeTot').textContent = filtered.length ? fmtAED(total) : '';
+
+  const lEl = document.getElementById('incomeList');
+  if (!filtered.length) {
+    lEl.innerHTML = '<div class="empty"><div class="ico">💰</div><div class="txt">No income recorded yet.<br>Tap + to add.</div></div>';
+  } else {
+    lEl.innerHTML = [...filtered].sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`
+      <div class="li">
+        <div class="li-icon" style="background:#e8f5e9">💰</div>
+        <div class="li-info">
+          <div class="li-name">${e.source}</div>
+          <div class="li-meta">${e.date}${e.note?' · '+e.note:''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:2px">
+          <div class="li-amt inc">+${fmtAED(e.amount)}</div>
+          <button class="ibtn" onclick="delIncome('${e.id}')">🗑</button>
+        </div>
+      </div>`).join('');
+  }
+}
+
+function selIncMonth(m) { curIncMonth = m; renderIncome(); }
+
+// ═══════════════════════════════════════════════
+//  RENDER EXPENSES
+// ═══════════════════════════════════════════════
+function renderExpenses() {
+  // Recurring
+  const active = D.recurring.filter(e=>e.active);
+  const tot = active.reduce((s,e)=>s+Number(e.amount),0);
+  document.getElementById('recurTotal').textContent = fmtAED(tot)+'/mo';
+
+  const rEl = document.getElementById('recurList');
+  if (!active.length) {
+    rEl.innerHTML = '<div class="empty"><div class="ico">🔄</div><div class="txt">No recurring expenses.<br>Tap + to add.</div></div>';
+  } else {
+    const grouped = active.reduce((g,e)=>{ (g[e.category]=g[e.category]||[]).push(e); return g; },{});
+    rEl.innerHTML = Object.entries(grouped).map(([cat,items])=>`
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${CAT_ICON[cat]||'📦'} ${cat}</div>
+        ${items.map(exp=>`
+          <div class="li">
+            <div class="li-info">
+              <div class="li-name">${exp.name}${exp.endDate?`<span class="ends-badge">ends ${exp.endDate}</span>`:''}</div>
+              <div class="li-meta">Day ${exp.dom||1}/mo · remind ${exp.remDays||3}d before</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:2px">
+              <div class="li-amt exp">${fmtAED(exp.amount)}</div>
+              <button class="ibtn" onclick="delRecurring('${exp.id}')">🗑</button>
+            </div>
+          </div>`).join('')}
+      </div>`).join('');
+  }
+
+  // One-time
+  const uEl = document.getElementById('upcomingList');
+  const now = today0();
+  const visible = D.once.filter(e => {
+    if (!e.paid) return true;
+    // show paid ones from this month onwards
+    return new Date(e.dueDate) >= new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+
+  if (!visible.length) {
+    uEl.innerHTML = '<div class="empty"><div class="ico">📋</div><div class="txt">No one-time expenses.<br>Tap + to add.</div></div>';
+  } else {
+    uEl.innerHTML = [...visible].sort((a,b)=>a.dueDate.localeCompare(b.dueDate)).map(exp=>{
+      const d = new Date(exp.dueDate);
+      const dl = Math.round((d-now)/86400000);
+      const cls = exp.paid?'paid-item':dl<0?'overdue':dl===0?'due-today':dl<=3?'due-soon':'';
+      const status = exp.paid
+        ? '<span style="color:var(--green);font-weight:700;font-size:11px">✅ Paid</span>'
+        : dl<0 ? '<span style="color:var(--red);font-weight:700;font-size:11px">OVERDUE</span>'
+        : dl===0 ? '<span style="color:var(--red);font-weight:700;font-size:11px">TODAY</span>'
+        : `<span style="color:var(--g500);font-size:11px">in ${dl}d</span>`;
+      return `<div class="li ${cls}">
+        <div class="li-icon" style="background:${CAT_BG[exp.category]||CAT_BG.Other}">${CAT_ICON[exp.category]||'📦'}</div>
+        <div class="li-info">
+          <div class="li-name">${exp.name}</div>
+          <div class="li-meta">${exp.dueDate} · ${status}${exp.note?' · '+exp.note:''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:2px">
+          <div class="li-amt exp">${fmtAED(exp.amount)}</div>
+          ${!exp.paid?`<button class="ibtn" title="Mark paid" onclick="markPaid('${exp.id}')">✅</button>`:''}
+          <button class="ibtn" onclick="delOnce('${exp.id}')">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER SETTINGS
+// ═══════════════════════════════════════════════
+function renderSettings() {
+  document.getElementById('cfgInitBal').value   = D.config.initialBalance || 0;
+  document.getElementById('cfgStartDate').value = D.config.startDate || '2026-01-01';
+  document.getElementById('cfgNtfy').value      = D.config.ntfyTopic || '';
+  document.getElementById('cfgFbUrl').value     = D.config.fbUrl || '';
+  document.getElementById('cfgFbSecret').value  = D.config.fbSecret || '';
+}
+
+// ═══════════════════════════════════════════════
+//  SETTINGS ACTIONS
+// ═══════════════════════════════════════════════
+function saveBalConfig() {
+  D.config.initialBalance = Number(document.getElementById('cfgInitBal').value)||0;
+  D.config.startDate = document.getElementById('cfgStartDate').value || '2026-01-01';
+  save(); toast('✅ Balance config saved'); render();
+}
+
+function saveNtfy() {
+  D.config.ntfyTopic = document.getElementById('cfgNtfy').value.trim();
+  save(); toast('✅ ntfy topic saved');
+}
+
+async function testNotif() {
+  await pushNotif('✅ Test: Home Tracker Working', 'Ahmed & Diana both received this. Notifications are set up! 🏠', 'default');
+  toast('📨 Test sent!');
+}
+
+async function saveFbConfig() {
+  D.config.fbUrl    = document.getElementById('cfgFbUrl').value.trim();
+  D.config.fbSecret = document.getElementById('cfgFbSecret').value.trim();
+  save();
+  const el = document.getElementById('fbStatus');
+  el.textContent = 'Syncing…';
+  const ok = await pullFirebase();
+  el.textContent = ok ? '✅ Connected & synced!' : '❌ Could not connect. Check URL & secret.';
+  el.style.color = ok ? 'var(--green)' : 'var(--red)';
+  if (ok) render();
+}
+
+function exportData() {
+  const b = new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
+  const u = URL.createObjectURL(b);
+  const a = document.createElement('a'); a.href=u; a.download=`home-tracker-${fmtDate(new Date())}.json`; a.click();
+  URL.revokeObjectURL(u);
+}
+
+function importData(e) {
+  const file = e.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try { D={...emptyData(),...JSON.parse(ev.target.result)}; save(); render(); toast('✅ Data imported'); }
+    catch(_){ toast('❌ Invalid file'); }
+  };
+  r.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════
+//  ADD MODAL
+// ═══════════════════════════════════════════════
+function openAdd() {
+  if (curTab==='income') setType('income');
+  else if (curTab==='expenses'&&curExpSeg==='recurring') setType('recurring');
+  else if (curTab==='expenses'&&curExpSeg==='upcoming') setType('once');
+  else setType('income');
+  document.getElementById('eDate').value = fmtDate(new Date());
+  document.getElementById('eName').value = '';
+  document.getElementById('eAmt').value = '';
+  document.getElementById('eNote').value = '';
+  document.getElementById('eDom').value = '1';
+  document.getElementById('eEnd').value = '';
+  document.getElementById('addOverlay').classList.add('show');
+}
+
+function closeAdd() { document.getElementById('addOverlay').classList.remove('show'); }
+
+function setType(type) {
+  curType = type;
+  const btns = document.querySelectorAll('#typeTgl .tgl-btn');
+  btns.forEach((b,i)=>b.classList.toggle('active',(i===0&&type==='income')||(i===1&&type==='once')||(i===2&&type==='recurring')));
+  const isInc = type==='income', isRec = type==='recurring', isExp = !isInc;
+  document.getElementById('nameLbl').textContent  = isInc ? 'Source' : 'Expense Name';
+  document.getElementById('dateLbl').textContent  = isInc ? 'Date Received' : 'Due Date';
+  document.getElementById('catGrp').style.display     = isExp ? 'block' : 'none';
+  document.getElementById('recurGrp').style.display   = isRec ? 'block' : 'none';
+  document.getElementById('dateGrp').style.display    = isRec ? 'none' : 'block';
+  document.getElementById('remGrp').style.display     = isExp ? 'block' : 'none';
+}
+
+function doSave(e) {
+  e.preventDefault();
+  const name = document.getElementById('eName').value.trim();
+  const amt  = parseFloat(document.getElementById('eAmt').value);
+  const date = document.getElementById('eDate').value;
+  const note = document.getElementById('eNote').value.trim();
+  const cat  = document.getElementById('eCat').value;
+  const rem  = parseInt(document.getElementById('eRem').value);
+  if (!name||!amt) { toast('Fill all required fields'); return; }
+
+  if (curType==='income') {
+    D.income.push({ id:uid(), source:name, amount:amt, date:date||fmtDate(new Date()), note });
+    toast('✅ Income added');
+  } else if (curType==='once') {
+    D.once.push({ id:uid(), name, amount:amt, dueDate:date, category:cat, paid:false, remDays:rem, note });
+    toast('✅ Expense added');
+  } else {
+    const dom = parseInt(document.getElementById('eDom').value)||1;
+    const end = document.getElementById('eEnd').value||null;
+    D.recurring.push({ id:uid(), name, amount:amt, category:cat, dom, endDate:end, remDays:rem, active:true });
+    toast('✅ Recurring expense added');
+  }
+  save(); closeAdd(); render();
+}
+
+// ═══════════════════════════════════════════════
+//  DELETE / MARK PAID
+// ═══════════════════════════════════════════════
+function delIncome(id)   { if(!confirm('Delete this income entry?'))return; D.income=D.income.filter(e=>e.id!==id); save(); render(); toast('Deleted'); }
+function delRecurring(id){ if(!confirm('Delete recurring expense?'))return; D.recurring=D.recurring.filter(e=>e.id!==id); save(); render(); toast('Deleted'); }
+function delOnce(id)     { if(!confirm('Delete this expense?'))return; D.once=D.once.filter(e=>e.id!==id); save(); render(); toast('Deleted'); }
+function markPaid(id)    { const e=D.once.find(x=>x.id===id); if(e){e.paid=true;e.paidDate=fmtDate(new Date());save();render();toast('✅ Marked paid');} }
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+let toastTimer;
+function toast(msg,dur=2400){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),dur); }
+
+// ═══════════════════════════════════════════════
+//  SEED DEFAULT DATA (from spreadsheet)
+// ═══════════════════════════════════════════════
+function seedDefaults() {
+  if (D.recurring.length || D.income.length) return; // already seeded
+
+  // Recurring expenses
+  const recDefs = [
+    ['Mortgage',18000,'Housing',1,null,7],
+    ['Car 1',3225,'Transport',1,null,3],
+    ['Car 2',3550,'Transport',1,null,3],
+    ['Nannies',4320,'Childcare',1,null,3],
+    ['Adam',4500,'Childcare',1,null,3],
+    ['Farida',5200,'Childcare',1,null,3],
+    ['BUS',1750,'Education',1,null,3],
+    ['Gymnastics',2000,'Education',1,null,3],
+    ['Football',750,'Education',1,null,3],
+    ['DEWA',1300,'Utilities',5,null,3],
+    ['DU',500,'Utilities',5,null,3],
+    ['Empower',1600,'Utilities',5,null,3],
+    ['Shoreline',18750,'Housing',1,null,7],
+    ['Mivida',5142,'Housing',1,null,7],
+    ['Zed East Installment',3285,'Investment',1,'2031-02-28',14],
+    ['Mountain View Installment',2690,'Investment',1,'2028-07-31',14],
+    ['Haitham',28571,'Loan',1,'2026-07-31',14],
+  ];
+  D.recurring = recDefs.map(([name,amount,category,dom,endDate,remDays])=>({
+    id:uid(), name, amount, category, dom, endDate, remDays, active:true
+  }));
+
+  // One-time expenses
+  D.once = [
+    {id:uid(),name:'Mountain View (one-time)',amount:37928,dueDate:'2026-07-01',category:'Investment',paid:false,remDays:14,note:'⚡ Jul only'},
+    {id:uid(),name:'Hacienda Ras el Hekma — 1st',amount:58930,dueDate:'2026-06-15',category:'Investment',paid:false,remDays:7,note:'Installment 1'},
+    {id:uid(),name:'Hacienda Ras el Hekma — 2nd',amount:94640,dueDate:'2026-09-15',category:'Investment',paid:false,remDays:14,note:'Installment 2'},
+    {id:uid(),name:'Hacienda Ras el Hekma — 3rd',amount:16657,dueDate:'2026-11-15',category:'Investment',paid:false,remDays:14,note:'Installment 3'},
+  ];
+
+  // Income Jan–Jun 2026 (pre-loaded from spreadsheet)
+  const incomeSources = [
+    ['Ahmed Salary',68000,'Monthly salary'],
+    ['Diana Salary',61000,'Monthly salary'],
+    ['Somabay Rental',4000,'Rental income'],
+    ['Telal Rental',16500,'Rental income'],
+  ];
+  for (let mo=1; mo<=6; mo++) {
+    const dateStr = `2026-${String(mo).padStart(2,'0')}-01`;
+    for (const [source,amount,note] of incomeSources) {
+      D.income.push({ id:uid(), source, amount, date:dateStr, note });
+    }
+  }
+
+  save();
+}
+
+// ═══════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  load();
+  seedDefaults();
+  await reqNotifPerm();
+  render();
+
+  // Try Firebase pull if configured
+  if (D.config.fbUrl && D.config.fbSecret) {
+    const ok = await pullFirebase();
+    if (ok) render();
+  } else {
+    setSyncDot('gray');
+  }
+
+  // Check notifications on load
+  await checkNotifs();
+
+  // Re-check every 30 min while app is open
+  setInterval(checkNotifs, 30*60*1000);
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+});
+</script>
+</body>
+</html>
