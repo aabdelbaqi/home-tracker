@@ -210,6 +210,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .divider{font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 8px;display:flex;align-items:center;gap:8px}
 .divider::after{content:'';flex:1;height:1px;background:var(--g200)}
 
+/* ── Month detail modal ── */
+.mdet-sec{margin-bottom:14px}
+.mdet-sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--g500);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--g200)}
+.mdet-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:13px}
+.mdet-row:not(:last-child){border-bottom:1px solid var(--g200)10}
+.mdet-total{display:flex;justify-content:space-between;align-items:center;padding:8px 0 0;font-size:14px;font-weight:700;border-top:2px solid var(--g200);margin-top:4px}
+.mdet-net{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:var(--rs);margin-top:10px;font-size:14px;font-weight:700}
 @media(min-width:600px){.content{max-width:480px;margin-left:auto;margin-right:auto}.hdr,.nav,.fab{max-width:480px;left:50%;transform:translateX(-50%)}.overlay{justify-content:center}.modal{border-radius:var(--r);margin-bottom:40px;max-width:480px}}
 </style>
 </head>
@@ -719,6 +726,11 @@ function drhmSvg(sz=13, color='currentColor') {
   return `<svg viewBox="0 0 1000 870" width="${sz}" height="${h}" style="display:inline-block;vertical-align:middle;margin-right:2px" fill="${color}"><path d="${_DRHM}"/></svg>`;
 }
 function fmtDRHM(n, sz=13) { return drhmSvg(sz) + ' ' + fmt(n); }
+function fmtK(n) {
+  const abs = Math.abs(n), sign = n < 0 ? "-" : (n > 0 ? "+" : "");
+  if (abs >= 1000) return sign + (abs/1000).toLocaleString("en-AE",{maximumFractionDigits:1}).replace(/\.0$/,"") + "K";
+  return sign + Math.round(abs);
+}
 function fmtDate(d) { return d instanceof Date ? d.toISOString().split('T')[0] : d; }
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
 
@@ -837,21 +849,21 @@ function renderDash() {
   const projThisEnd = bal - Math.max(0, thisRemExpenses);
   const projNextEnd = projThisEnd + nextFC.net;
 
-  function fcastCard(fc, projBal, cls, tag) {
+  function fcastCard(fc, projBal, cls, tag, year, month) {
     const nc = fc.net>=0?'var(--green)':'var(--red)';
     const pb = projBal>=0?'var(--green)':'var(--red)';
     const fmtNum = (n) => (n>=0?'+':'')+Number(n).toLocaleString('en-AE',{maximumFractionDigits:0});
-    return `<div class="fcard ${cls}">
-      <div class="fc-month">${fc.monthLabel} <span class="fc-tag">${tag}</span></div>
+    return `<div class="fcard ${cls}" onclick="showMonthDetail(${year},${month})" style="cursor:pointer">
+      <div class="fc-month">${fc.monthLabel} <span class="fc-tag">${tag}</span><span style="float:right;font-size:10px;color:var(--g500);margin-top:1px">Details ›</span></div>
       <div class="fc-cols">
         <div class="fc-stat">
           <div class="fc-stat-lbl">Income</div>
-          <div class="fc-stat-num" style="color:var(--green)">${fc.income>0?'+'+Number(fc.income).toLocaleString('en-AE',{maximumFractionDigits:0}):'—'}</div>
+          <div class="fc-stat-num" style="color:var(--green)">${fc.income>0?fmtK(fc.income):'—'}</div>
           <div class="fc-stat-unit">${drhmSvg(11,'var(--g500)')}</div>
         </div>
         <div class="fc-stat">
           <div class="fc-stat-lbl">Expenses</div>
-          <div class="fc-stat-num" style="color:var(--red)">${fc.expenses>0?'−'+Number(fc.expenses).toLocaleString('en-AE',{maximumFractionDigits:0}):'—'}</div>
+          <div class="fc-stat-num" style="color:var(--red)">${fc.expenses>0?fmtK(-fc.expenses):'—'}</div>
           <div class="fc-stat-unit">${drhmSvg(11,'var(--g500)')}</div>
         </div>
       </div>
@@ -860,8 +872,8 @@ function renderDash() {
     </div>`;
   }
   document.getElementById('forecastGrid').innerHTML =
-    fcastCard(thisFC, projThisEnd, 'this-month', 'This Month') +
-    fcastCard(nextFC, projNextEnd, 'next-month', 'Next Month');
+    fcastCard(thisFC, projThisEnd, 'this-month', 'This Month', now.getFullYear(), now.getMonth()) +
+    fcastCard(nextFC, projNextEnd, 'next-month', 'Next Month', nextD.getFullYear(), nextD.getMonth());
 
   // Upcoming preview
   const upEl = document.getElementById('upcomingPreview');
@@ -1409,6 +1421,80 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+// ── Month Detail Modal ──
+const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function showMonthDetail(year, month) {
+  const yyyymm = `${year}-${String(month+1).padStart(2,'0')}`;
+  const first  = new Date(year, month, 1);
+  const last   = new Date(year, month+1, 0);
+  const fc     = calcForecast(year, month);
+
+  // --- Expected income breakdown ---
+  let incRows = '';
+  let incTotal = 0;
+  for (const src of D.expectedIncome || []) {
+    if (!src.active) continue;
+    const receipt = (D.incomeReceipts||{})[src.id+'_'+yyyymm];
+    const amt = receipt ? Number(receipt.amount) : Number(src.defaultAmount);
+    const received = receipt && receipt.received;
+    incTotal += amt;
+    incRows += `<div class="mdet-row"><span>${src.source}</span><span style="color:${received?'var(--green)':'var(--navy)'}">
+      ${received?'✅ ':''}${fmtDRHM(amt,11)}</span></div>`;
+  }
+  // Manual income entries this month
+  const manual = D.income.filter(e=>{const d=new Date(e.date);return d>=first&&d<=last;});
+  for (const e of manual) {
+    incTotal += Number(e.amount);
+    incRows += `<div class="mdet-row"><span>${e.source} <span style="font-size:10px;color:var(--g500)">(manual)</span></span><span style="color:var(--green)">${fmtDRHM(e.amount,11)}</span></div>`;
+  }
+
+  // --- Expected expenses breakdown ---
+  let expRows = '';
+  let expTotal = 0;
+  // Recurring
+  for (const exp of D.recurring) {
+    if (!exp.active) continue;
+    if (exp.endDate && new Date(exp.endDate) < first) continue;
+    const key = exp.id+'_'+yyyymm;
+    const isDed = !!(D.deductions||{})[key];
+    expTotal += Number(exp.amount);
+    expRows += `<div class="mdet-row"><span>${exp.name} <span style="font-size:10px;color:var(--g500)">recurring</span></span>
+      <span style="color:${isDed?'var(--red)':'var(--navy)'}"> ${isDed?'✅ ':''}${fmtDRHM(exp.amount,11)}</span></div>`;
+  }
+  // One-time
+  for (const exp of D.once) {
+    const d = new Date(exp.dueDate);
+    if (d<first||d>last) continue;
+    expTotal += Number(exp.amount);
+    expRows += `<div class="mdet-row"><span>${exp.name} <span style="font-size:10px;color:var(--g500)">one-time</span></span>
+      <span style="color:${exp.paid?'var(--red)':'var(--navy)'}"> ${exp.paid?'✅ ':''}${fmtDRHM(exp.amount,11)}</span></div>`;
+  }
+
+  const net = incTotal - expTotal;
+  const nc  = net>=0 ? 'var(--green)' : 'var(--red)';
+  const netBg = net>=0 ? '#e8f5e9' : '#fdecea';
+
+  document.getElementById('monthDetailTitle').textContent = `${MONTHS_FULL[month]} ${year}`;
+  document.getElementById('monthDetailBody').innerHTML = `
+    <div class="mdet-sec">
+      <div class="mdet-sec-title">💰 Expected Income</div>
+      ${incRows||'<div style="color:var(--g500);font-size:13px;padding:6px 0">No income sources</div>'}
+      <div class="mdet-total"><span>Total Income</span><span style="color:var(--green)">${fmtDRHM(incTotal)}</span></div>
+    </div>
+    <div class="mdet-sec">
+      <div class="mdet-sec-title">💸 Expected Expenses</div>
+      ${expRows||'<div style="color:var(--g500);font-size:13px;padding:6px 0">No expenses</div>'}
+      <div class="mdet-total"><span>Total Expenses</span><span style="color:var(--red)">${fmtDRHM(expTotal)}</span></div>
+    </div>
+    <div class="mdet-net" style="background:${netBg}">
+      <span>Net for ${MONTHS_SHORT[month]}</span>
+      <span style="color:${nc}">${net>=0?'+':''}${fmtDRHM(net)}</span>
+    </div>
+    <div style="margin-top:8px;font-size:11px;color:var(--g500);text-align:center">✅ = already recorded &nbsp;|&nbsp; tap items in Income/Expenses tabs to update</div>
+  `;
+  document.getElementById('monthDetailOverlay').classList.add('show');
+}
+
 // ── Reschedule modal ──
 function rescheduleOnce(id) {
   const exp = D.once.find(e=>e.id===id);
@@ -1439,6 +1525,17 @@ function confirmResched() {
   toast(`📅 Rescheduled from ${old} → ${newDate}`);
 }
 </script>
+
+<!-- Month detail modal -->
+<div class="overlay" id="monthDetailOverlay" onclick="if(event.target===this)document.getElementById('monthDetailOverlay').classList.remove('show')">
+  <div class="modal" id="monthDetailModal">
+    <div class="modal-title">
+      <span id="monthDetailTitle">Month Detail</span>
+      <button class="modal-close" onclick="document.getElementById('monthDetailOverlay').classList.remove('show')">✕</button>
+    </div>
+    <div id="monthDetailBody"></div>
+  </div>
+</div>
 
 <!-- Reschedule modal -->
 <div class="overlay" id="reschedOverlay" onclick="if(event.target===this)closeResched()">
