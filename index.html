@@ -179,10 +179,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .fcard.this-month::before{background:var(--teal)}
 .fcard.next-month::before{background:var(--navy2)}
 .fcard .fc-month{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g500);margin-bottom:8px}
-.fcard .fc-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:4px}
-.fcard .fc-lbl{color:var(--g500)}
-.fcard .fc-val{font-weight:700}
-.fcard .fc-net{display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid var(--g200);font-size:13px;font-weight:700}
+.fcard .fc-cols{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.fcard .fc-stat{background:var(--g100);border-radius:8px;padding:8px 10px;text-align:center}
+.fcard .fc-stat-lbl{font-size:10px;color:var(--g500);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.fcard .fc-stat-num{font-size:17px;font-weight:800;line-height:1.1}
+.fcard .fc-stat-unit{font-size:9px;color:var(--g500);margin-top:2px;font-weight:500}
+.fcard .fc-net{display:flex;justify-content:space-between;align-items:center;margin-top:2px;padding-top:8px;border-top:1px solid var(--g200);font-size:13px;font-weight:700}
 .fcard .fc-tag{font-size:9px;background:var(--g200);color:var(--g500);padding:1px 5px;border-radius:8px;font-weight:600}
 
 /* ── Segment toggle for expenses ── */
@@ -701,7 +703,15 @@ async function reqNotifPerm() {
 //  FORMATTING
 // ═══════════════════════════════════════════════
 function fmt(n) { return Number(n).toLocaleString('en-AE',{maximumFractionDigits:0}); }
-function fmtAED(n) { return 'AED ' + fmt(n); }
+function fmtAED(n) { return 'AED ' + fmt(n); } // used in toasts/text-only
+
+// ── UAE Dirham symbol (official SVG, 2023) ──
+const _DRHM = `m88.3 1c0.4 0.6 2.6 3.3 4.7 5.9 15.3 18.2 26.8 47.8 33 85.1 4.1 24.5 4.3 32.2 4.3 125.6v87h-41.8c-38.2 0-42.6-0.2-50.1-1.7-11.8-2.5-24-9.2-32.2-17.8-6.5-6.9-6.3-7.3-5.9 13.6 0.5 17.3 0.7 19.2 3.2 28.6 4 14.9 9.5 26 17.8 35.9 11.3 13.6 22.8 21.2 39.2 26.3 3.5 1 10.9 1.4 37.1 1.6l32.7 0.5v43.3 43.4l-46.1-0.3-46.3-0.3-8-3.2c-9.5-3.8-13.8-6.6-23.1-14.9l-6.8-6.1 0.4 19.1c0.5 17.7 0.6 19.7 3.1 28.7 8.7 31.8 29.7 54.5 57.4 61.9 6.9 1.9 9.6 2 38.5 2.4l30.9 0.4v89.6c0 54.1-0.3 94-0.8 100.8-0.5 6.2-2.1 17.8-3.5 25.9-6.5 37.3-18.2 65.4-35 83.6l-3.4 3.7h169.1c101.1 0 176.7-0.4 187.8-0.9 19.5-1 63-5.3 72.8-7.4 3.1-0.6 8.9-1.5 12.7-2.1 8.1-1.2 21.5-4 40.8-8.9 27.2-6.8 52-15.3 76.3-26.1 7.6-3.4 29.4-14.5 35.2-18 3.1-1.8 6.8-4 8.2-4.7 3.9-2.1 10.4-6.3 19.9-13.1 4.7-3.4 9.4-6.7 10.4-7.4 4.2-2.8 18.7-14.9 25.3-21 25.1-23.1 46.1-48.8 62.4-76.3 2.3-4 5.3-9 6.6-11.1 3.3-5.6 16.9-33.6 18.2-37.8 0.6-1.9 1.4-3.9 1.8-4.3 2.6-3.4 17.6-50.6 19.4-60.9 0.6-3.3 0.9-3.8 3.4-4.3 1.6-0.3 24.9-0.3 51.8-0.1 53.8 0.4 53.8 0.4 65.7 5.9 6.7 3.1 8.7 4.5 16.1 11.2 9.7 8.7 8.8 10.1 8.2-11.7-0.4-12.8-0.9-20.7-1.8-23.9-3.4-12.3-4.2-14.9-7.2-21.1-9.8-21.4-26.2-36.7-47.2-44l-8.2-3-33.4-0.4-33.3-0.5 0.4-11.7c0.4-15.4 0.4-45.9-0.1-61.6l-0.4-12.6 44.6-0.2c38.2-0.2 45.3 0 49.5 1.1 12.6 3.5 21.1 8.3 31.5 17.8l5.8 5.4v-14.8c0-17.6-0.9-25.4-4.5-37-7.1-23.5-21.1-41-41.1-51.8-13-7-13.8-7.2-58.5-7.5-26.2-0.2-39.9-0.6-40.6-1.2-0.6-0.6-1.1-1.6-1.1-2.4 0-0.8-1.5-7.1-3.5-13.9-23.4-82.7-67.1-148.4-131-197.1-8.7-6.7-30-20.8-38.6-25.6-3.3-1.9-6.9-3.9-7.8-4.5-4.2-2.3-28.3-14.1-34.3-16.6-3.6-1.6-8.3-3.6-10.4-4.4-35.3-15.3-94.5-29.8-139.7-34.3-7.4-0.7-17.2-1.8-21.7-2.2-20.4-2.3-48.7-2.6-209.4-2.6-135.8 0-169.9 0.3-169.4 1zm330.7 43.3c33.8 2 54.6 4.6 78.9 10.5 74.2 17.6 126.4 54.8 164.3 117 3.5 5.8 18.3 36 20.5 42.1 10.5 28.3 15.6 45.1 20.1 67.3 1.1 5.4 2.6 12.6 3.3 16 0.7 3.3 1 6.4 0.7 6.7-0.5 0.4-100.9 0.6-223.3 0.5l-222.5-0.2-0.3-128.5c-0.1-70.6 0-129.3 0.3-130.4l0.4-1.9h71.1c39 0 78 0.4 86.5 0.9zm297.5 350.3c0.7 4.3 0.7 77.3 0 80.9l-0.6 2.7-227.5-0.2-227.4-0.3-0.2-42.4c-0.2-23.3 0-42.7 0.2-43.1 0.3-0.5 97.2-0.8 227.7-0.8h227.2zm-10.2 171.7c0.5 1.5-1.9 13.8-6.8 33.8-5.6 22.5-13.2 45.2-20.9 62-3.8 8.6-13.3 27.2-15.6 30.7-1.1 1.6-4.3 6.7-7.1 11.2-18 28.2-43.7 53.9-73 72.9-10.7 6.8-32.7 18.4-38.6 20.2-1.2 0.3-2.5 0.9-3 1.3-0.7 0.6-9.8 4-20.4 7.8-19.5 6.9-56.6 14.4-86.4 17.5-19.3 1.9-22.4 2-96.7 2h-76.9v-129.7-129.8l220.9-0.4c121.5-0.2 221.6-0.5 222.4-0.7 0.9-0.1 1.8 0.5 2.1 1.2z`;
+function drhmSvg(sz=13, color='currentColor') {
+  const h = Math.round(sz * 0.87);
+  return `<svg viewBox="0 0 1000 870" width="${sz}" height="${h}" style="display:inline-block;vertical-align:middle;margin-right:2px" fill="${color}"><path d="${_DRHM}"/></svg>`;
+}
+function fmtDRHM(n, sz=13) { return drhmSvg(sz) + ' ' + fmt(n); }
 function fmtDate(d) { return d instanceof Date ? d.toISOString().split('T')[0] : d; }
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
 
@@ -743,7 +753,7 @@ function render() {
 function updateHeader() {
   const bal = calcBalance();
   const el = document.getElementById('hdrBal');
-  el.textContent = fmtAED(bal);
+  el.innerHTML = fmtDRHM(bal, 17);
   el.style.color = bal >= 0 ? 'var(--teal)' : 'var(--red)';
 }
 
@@ -784,14 +794,14 @@ function renderDash() {
   const manualIncThisMonth = D.income.filter(e=>{const d=new Date(e.date);return d>=first&&d<=last;}).reduce((s,e)=>s+Number(e.amount),0);
   const incomeThisMonth = expReceivedThisMonth + manualIncThisMonth;
 
-  document.getElementById('sumIncome').textContent   = fmtAED(incomeThisMonth);
-  document.getElementById('sumExpenses').textContent = fmtAED(totalDeductedThisMonth);
+  document.getElementById('sumIncome').innerHTML   = fmtDRHM(incomeThisMonth);
+  document.getElementById('sumExpenses').innerHTML = fmtDRHM(totalDeductedThisMonth);
   const netActual = incomeThisMonth - totalDeductedThisMonth;
   const netEl = document.getElementById('sumNet');
-  netEl.textContent = (netActual>=0?'+':'')+fmtAED(netActual);
+  netEl.innerHTML = (netActual>=0?'+':'')+fmtDRHM(netActual);
   netEl.className = 'val ' + (netActual>=0?'pos':'neg');
   const balEl = document.getElementById('sumBalance');
-  balEl.textContent = fmtAED(bal);
+  balEl.innerHTML = fmtDRHM(bal);
   balEl.className = 'val ' + (bal>=0?'pos':'neg');
 
   // Alerts
@@ -805,8 +815,8 @@ function renderDash() {
   const col = pct>90?'var(--red)':pct>70?'var(--yellow)':'var(--green)';
   document.getElementById('budgetBar').innerHTML = `
     <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
-      <span style="color:var(--red)">Deducted: ${fmtAED(totalDeductedThisMonth)}</span>
-      <span style="color:var(--teal2)">Income: ${fmtAED(incomeThisMonth)}</span>
+      <span style="color:var(--red)">Deducted: ${fmtDRHM(totalDeductedThisMonth)}</span>
+      <span style="color:var(--teal2)">Income: ${fmtDRHM(incomeThisMonth)}</span>
     </div>
     <div class="prog-bar"><div class="prog-fill" style="width:${pct.toFixed(0)}%;background:${col}"></div></div>
     <div style="text-align:right;font-size:11px;margin-top:4px;color:var(--g500)">${pct.toFixed(0)}% of income deducted</div>`;
@@ -823,12 +833,23 @@ function renderDash() {
   function fcastCard(fc, projBal, cls, tag) {
     const nc = fc.net>=0?'var(--green)':'var(--red)';
     const pb = projBal>=0?'var(--green)':'var(--red)';
+    const fmtNum = (n) => (n>=0?'+':'')+Number(n).toLocaleString('en-AE',{maximumFractionDigits:0});
     return `<div class="fcard ${cls}">
       <div class="fc-month">${fc.monthLabel} <span class="fc-tag">${tag}</span></div>
-      <div class="fc-row"><span class="fc-lbl">Expected income</span><span class="fc-val" style="color:var(--green)">${fc.income>0?'+'+fmtAED(fc.income):'—'}</span></div>
-      <div class="fc-row"><span class="fc-lbl">Expected expenses</span><span class="fc-val" style="color:var(--red)">${fc.expenses>0?'−'+fmtAED(fc.expenses):'—'}</span></div>
-      <div class="fc-net"><span>Net forecast</span><span style="color:${nc}">${(fc.net>=0?'+':'')+fmtAED(fc.net)}</span></div>
-      <div style="margin-top:6px;font-size:11px;color:var(--g500)">Projected bal: <strong style="color:${pb}">${fmtAED(projBal)}</strong></div>
+      <div class="fc-cols">
+        <div class="fc-stat">
+          <div class="fc-stat-lbl">Income</div>
+          <div class="fc-stat-num" style="color:var(--green)">${fc.income>0?'+'+Number(fc.income).toLocaleString('en-AE',{maximumFractionDigits:0}):'—'}</div>
+          <div class="fc-stat-unit">${drhmSvg(11,'var(--g500)')}</div>
+        </div>
+        <div class="fc-stat">
+          <div class="fc-stat-lbl">Expenses</div>
+          <div class="fc-stat-num" style="color:var(--red)">${fc.expenses>0?'−'+Number(fc.expenses).toLocaleString('en-AE',{maximumFractionDigits:0}):'—'}</div>
+          <div class="fc-stat-unit">${drhmSvg(11,'var(--g500)')}</div>
+        </div>
+      </div>
+      <div class="fc-net"><span>Net forecast</span><span style="color:${nc}">${fmtNum(fc.net)} ${drhmSvg(12,nc)}</span></div>
+      <div style="margin-top:6px;font-size:11px;color:var(--g500)">Projected bal: <strong style="color:${pb}">${Number(projBal).toLocaleString('en-AE',{maximumFractionDigits:0})} ${drhmSvg(10,pb)}</strong></div>
     </div>`;
   }
   document.getElementById('forecastGrid').innerHTML =
@@ -851,7 +872,7 @@ function renderDash() {
           <div class="li-meta">${exp.dueDate} · <span style="color:${dlCol};font-weight:700">${dlLbl}</span></div>
         </div>
         <div style="display:flex;align-items:center;gap:3px">
-          <div class="li-amt exp">${fmtAED(exp.amount)}</div>
+          <div class="li-amt exp">${fmtDRHM(exp.amount)}</div>
           ${exp.type==='once'?`<button class="ibtn" title="Reschedule" onclick="rescheduleOnce('${exp.id}')">📅</button>`:''}
         </div>
       </div>`;
@@ -898,8 +919,8 @@ function renderIncome() {
 
     eEl.innerHTML = `
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--g200)">
-        <span style="color:var(--g500)">Expected: <strong style="color:var(--navy)">${fmtAED(totalExpected)}</strong></span>
-        <span style="color:var(--g500)">Received: <strong style="color:var(--green)">${fmtAED(totalReceived)}</strong></span>
+        <span style="color:var(--g500)">Expected: <strong style="color:var(--navy)">${fmtDRHM(totalExpected)}</strong></span>
+        <span style="color:var(--g500)">Received: <strong style="color:var(--green)">${fmtDRHM(totalReceived)}</strong></span>
       </div>` +
       expSrcs.filter(s=>s.active).map(src => {
         const key = src.id + '_' + yyyymm;
@@ -914,7 +935,7 @@ function renderIncome() {
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
             <div class="inc-amt-wrap">
-              <span class="inc-amt" onclick="editReceiptAmt('${src.id}','${yyyymm}')" title="Tap to override amount">${fmtAED(amt)} ✏️</span>
+              <span class="inc-amt" onclick="editReceiptAmt('${src.id}','${yyyymm}')" title="Tap to override amount">${fmtDRHM(amt)} ✏️</span>
             </div>
             <button class="rec-btn${isRec?' received':''}" onclick="toggleReceipt('${src.id}','${yyyymm}')">
               ${isRec ? '✅ Received' : '○ Not yet'}
@@ -950,7 +971,7 @@ function renderIncome() {
           <div class="li-meta">${e.date}${e.note?' · '+e.note:''}</div>
         </div>
         <div style="display:flex;align-items:center;gap:2px">
-          <div class="li-amt inc">+${fmtAED(e.amount)}</div>
+          <div class="li-amt inc">+${fmtDRHM(e.amount)}</div>
           <button class="ibtn" onclick="delIncome('${e.id}')">🗑</button>
         </div>
       </div>`).join('');
@@ -966,7 +987,7 @@ function renderExpenses() {
   // Recurring
   const active = D.recurring.filter(e=>e.active);
   const tot = active.reduce((s,e)=>s+Number(e.amount),0);
-  document.getElementById('recurTotal').textContent = fmtAED(tot)+'/mo';
+  document.getElementById('recurTotal').innerHTML = fmtDRHM(tot)+'/mo';
 
   const rEl = document.getElementById('recurList');
   if (!active.length) {
@@ -983,8 +1004,8 @@ function renderExpenses() {
     const grouped = active.reduce((g,e)=>{ (g[e.category]=g[e.category]||[]).push(e); return g; },{});
     rEl.innerHTML = `
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--g200)">
-        <span style="color:var(--g500)">${curMonthLbl} deducted: <strong style="color:var(--red)">${fmtAED(dedThisMonth)}</strong></span>
-        <span style="color:var(--g500)">Total: <strong style="color:var(--navy)">${fmtAED(totalMonthly)}</strong></span>
+        <span style="color:var(--g500)">${curMonthLbl} deducted: <strong style="color:var(--red)">${fmtDRHM(dedThisMonth)}</strong></span>
+        <span style="color:var(--g500)">Total: <strong style="color:var(--navy)">${fmtDRHM(totalMonthly)}</strong></span>
       </div>` +
     Object.entries(grouped).map(([cat,items])=>`
       <div style="margin-bottom:10px">
@@ -996,7 +1017,7 @@ function renderExpenses() {
             <div class="li-icon" style="background:${CAT_BG[cat]||CAT_BG.Other};margin-right:10px">${CAT_ICON[cat]||'📦'}</div>
             <div class="li-info">
               <div class="li-name">${exp.name}${exp.endDate?`<span class="ends-badge">ends ${exp.endDate}</span>`:''}</div>
-              <div class="li-meta">Day ${exp.dom||1}/mo · ${fmtAED(exp.amount)}</div>
+              <div class="li-meta">Day ${exp.dom||1}/mo · ${fmtDRHM(exp.amount)}</div>
             </div>
             <div style="display:flex;align-items:center;gap:5px">
               <button class="ded-btn${isDed?' deducted':''}" onclick="toggleDeduction('${exp.id}','${curYYYYMM}')">
@@ -1037,7 +1058,7 @@ function renderExpenses() {
           <div class="li-meta">${exp.dueDate} · ${status}${exp.note?' · '+exp.note:''}</div>
         </div>
         <div style="display:flex;align-items:center;gap:2px">
-          <div class="li-amt exp">${fmtAED(exp.amount)}</div>
+          <div class="li-amt exp">${fmtDRHM(exp.amount)}</div>
           ${!exp.paid?`<button class="ibtn" title="Reschedule date" onclick="rescheduleOnce('${exp.id}')">📅</button>`:''}
           ${!exp.paid?`<button class="ibtn" title="Mark paid" onclick="markPaid('${exp.id}')">✅</button>`:''}
           <button class="ibtn" onclick="delOnce('${exp.id}')">🗑</button>
