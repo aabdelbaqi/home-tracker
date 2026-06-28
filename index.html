@@ -547,6 +547,14 @@ function setSyncDot(state) {
 // ═══════════════════════════════════════════════
 function today0() { const d = new Date(); d.setHours(0,0,0,0); return d; }
 
+// Returns true if a quarterly expense is due in the given year/month
+function isQuarterDue(exp, year, month) {
+  const sd = new Date(exp.startDate || '2026-01-01');
+  const startY = sd.getFullYear(), startM = sd.getMonth();
+  if (year < startY || (year === startY && month < startM)) return false;
+  return (month - startM + 120) % 3 === 0;
+}
+
 // ACTUAL balance — only what has been manually acknowledged
 function calcBalance() {
   let bal = Number(D.config.initialBalance) || 0;
@@ -582,6 +590,8 @@ function calcForecast(year, month) {
   for (const exp of D.recurring) {
     if (!exp.active) continue;
     if (exp.endDate && new Date(exp.endDate) < first) continue;
+    if (exp.startDate && new Date(exp.startDate) > last) continue;
+    if (exp.freq === 'quarterly' && !isQuarterDue(exp, year, month)) continue;
     expenses += Number(exp.amount);
   }
   for (const exp of D.once) {
@@ -621,6 +631,8 @@ function sixMonthChart() {
     for (const exp of D.recurring) {
       if (!exp.active) continue;
       if (exp.endDate && new Date(exp.endDate)<first) continue;
+      if (exp.startDate && new Date(exp.startDate) > last) continue;
+      if (exp.freq === 'quarterly' && !isQuarterDue(exp, y, m)) continue;
       if (first >= new Date(D.config.startDate||'2026-01-01')) expenses += Number(exp.amount);
     }
     for (const exp of D.once) {
@@ -645,14 +657,28 @@ function upcomingN(days=30) {
   for (const exp of D.recurring) {
     if (!exp.active) continue;
     if (exp.endDate && new Date(exp.endDate) < now) continue;
+    if (exp.startDate && new Date(exp.startDate) > future) continue;
     const dom = exp.dom || 1;
-    const thisM = new Date(now.getFullYear(), now.getMonth(), dom);
-    const nextM = new Date(now.getFullYear(), now.getMonth()+1, dom);
-    for (const due of [thisM, nextM]) {
-      const dl = Math.round((due-now)/86400000);
-      if (dl >= 0 && dl <= days) {
-        list.push({...exp, dueDate:fmtDate(due), type:'recurring', daysLeft:dl});
-        break;
+    if (exp.freq === 'quarterly') {
+      for (let i = 0; i <= 4; i++) {
+        const candidate = new Date(now.getFullYear(), now.getMonth() + i, dom);
+        if (isQuarterDue(exp, candidate.getFullYear(), candidate.getMonth())) {
+          const dl = Math.round((candidate - now) / 86400000);
+          if (dl >= 0 && dl <= days) {
+            list.push({...exp, dueDate: fmtDate(candidate), type: 'recurring', daysLeft: dl});
+          }
+          break;
+        }
+      }
+    } else {
+      const thisM = new Date(now.getFullYear(), now.getMonth(), dom);
+      const nextM = new Date(now.getFullYear(), now.getMonth()+1, dom);
+      for (const due of [thisM, nextM]) {
+        const dl = Math.round((due-now)/86400000);
+        if (dl >= 0 && dl <= days) {
+          list.push({...exp, dueDate:fmtDate(due), type:'recurring', daysLeft:dl});
+          break;
+        }
       }
     }
   }
@@ -683,6 +709,8 @@ async function checkNotifs() {
   }
   for (const exp of D.recurring) {
     if (!exp.active) continue;
+    if (exp.freq === 'quarterly' && !isQuarterDue(exp, now.getFullYear(), now.getMonth())) continue;
+    if (exp.startDate && new Date(exp.startDate) > now) continue;
     const due = new Date(now.getFullYear(), now.getMonth(), exp.dom||1);
     const dl = Math.round((due-now)/86400000);
     const rem = Number(exp.remDays)||3;
@@ -1005,8 +1033,14 @@ function selIncMonth(m) { curIncMonth = m; renderIncome(); }
 function renderExpenses() {
   // Recurring
   const active = D.recurring.filter(e=>e.active);
-  const tot = active.reduce((s,e)=>s+Number(e.amount),0);
-  document.getElementById('recurTotal').innerHTML = fmtDRHM(tot)+'/mo';
+  const now0 = today0();
+  const tot = active.reduce((s,e)=>{
+    if (e.endDate && new Date(e.endDate) < now0) return s;
+    if (e.startDate && new Date(e.startDate) > now0) return s;
+    if (e.freq === 'quarterly' && !isQuarterDue(e, now0.getFullYear(), now0.getMonth())) return s;
+    return s+Number(e.amount);
+  },0);
+  document.getElementById('recurTotal').innerHTML = fmtDRHM(tot)+' this month';
 
   const rEl = document.getElementById('recurList');
   if (!active.length) {
@@ -1035,8 +1069,8 @@ function renderExpenses() {
           return `<div class="li">
             <div class="li-icon" style="background:${CAT_BG[cat]||CAT_BG.Other};margin-right:10px">${CAT_ICON[cat]||'📦'}</div>
             <div class="li-info">
-              <div class="li-name">${exp.name}${exp.endDate?`<span class="ends-badge">ends ${exp.endDate}</span>`:''}</div>
-              <div class="li-meta">Day ${exp.dom||1}/mo · ${fmtDRHM(exp.amount)}</div>
+              <div class="li-name">${exp.name}${exp.endDate?`<span class="ends-badge">ends ${exp.endDate}</span>`:''}${exp.freq==='quarterly'?'<span class="ends-badge" style="background:#e0f7fa;color:#00796b">quarterly</span>':''}</div>
+              <div class="li-meta">Day ${exp.dom||1}/${exp.freq==='quarterly'?'qtr':'mo'} · ${fmtDRHM(exp.amount)}${exp.startDate&&new Date(exp.startDate)>today0()?` · <span style="color:var(--g500)">starts ${exp.startDate}</span>`:''}</div>
             </div>
             <div style="display:flex;align-items:center;gap:5px">
               <button class="ded-btn${isDed?' deducted':''}" onclick="toggleDeduction('${exp.id}','${curYYYYMM}')">
@@ -1374,18 +1408,24 @@ function seedDefaults() {
     ['DU',500,'Utilities',5,null,3],
     ['Empower',1600,'Utilities',5,null,3],
     ['Shoreline',18750,'Housing',1,null,7],
-    ['Mivida',5142,'Housing',1,null,7],
-    ['Zed East Installment',3285,'Investment',1,'2031-02-28',14],
-    ['Mountain View Installment',2690,'Investment',1,'2028-07-31',14],
-    ['Haitham',28571,'Loan',1,'2026-07-31',14],
+    ['Mivida',16150,'Housing',1,null,7],
+    ['Zed East Installment',10345,'Investment',1,'2031-02-28',14],
+    ['Mountain View Installment',8440,'Investment',1,'2028-07-31',14],
   ];
   D.recurring = recDefs.map(([name,amount,category,dom,endDate,remDays])=>({
     id:uid(), name, amount, category, dom, endDate, remDays, active:true
   }));
+  // Apply quarterly settings to seed entries
+  D.recurring = D.recurring.map(exp => {
+    if (exp.name === 'Mivida') return { ...exp, freq: 'quarterly', startDate: '2026-09-01', endDate: null };
+    if (exp.name === 'Zed East Installment') return { ...exp, freq: 'quarterly', startDate: '2026-08-01' };
+    if (exp.name === 'Mountain View Installment') return { ...exp, freq: 'quarterly', startDate: '2026-10-01' };
+    return exp;
+  });
 
   // One-time expenses
   D.once = [
-    {id:uid(),name:'Mountain View (one-time)',amount:37928,dueDate:'2026-07-01',category:'Investment',paid:false,remDays:14,note:'⚡ Jul only'},
+    {id:uid(),name:'Mountain View (one-time)',amount:39626,dueDate:'2026-07-01',category:'Investment',paid:false,remDays:14,note:'⚡ Jul only'},
     {id:uid(),name:'Hacienda Ras el Hekma — 1st',amount:58930,dueDate:'2026-06-15',category:'Investment',paid:false,remDays:7,note:'Installment 1'},
     {id:uid(),name:'Hacienda Ras el Hekma — 2nd',amount:94640,dueDate:'2026-09-15',category:'Investment',paid:false,remDays:14,note:'Installment 2'},
     {id:uid(),name:'Hacienda Ras el Hekma — 3rd',amount:16657,dueDate:'2026-11-15',category:'Investment',paid:false,remDays:14,note:'Installment 3'},
@@ -1395,11 +1435,54 @@ function seedDefaults() {
 }
 
 // ═══════════════════════════════════════════════
+//  DATA MIGRATION
+// ═══════════════════════════════════════════════
+function migrateV2() {
+  if (D.config.migratedV2) return; // already applied
+  let changed = false;
+
+  // Patch specific recurring expenses by name — does NOT touch any other data
+  D.recurring = D.recurring.map(exp => {
+    if (exp.name === 'Mivida') {
+      changed = true;
+      return { ...exp, amount: 16150, freq: 'quarterly', startDate: '2026-09-01', endDate: null };
+    }
+    if (exp.name === 'Zed East Installment') {
+      changed = true;
+      return { ...exp, amount: 10345, freq: 'quarterly', startDate: '2026-08-01', endDate: '2031-02-28' };
+    }
+    if (exp.name === 'Mountain View Installment') {
+      changed = true;
+      return { ...exp, amount: 8440, freq: 'quarterly', startDate: '2026-10-01', endDate: '2028-07-31' };
+    }
+    return exp;
+  }).filter(exp => {
+    if (exp.name === 'Haitham') { changed = true; return false; }
+    return true;
+  });
+
+  // Update Mountain View one-time amount
+  D.once = D.once.map(exp => {
+    if (exp.name === 'Mountain View (one-time)') {
+      changed = true;
+      return { ...exp, amount: 39626 };
+    }
+    return exp;
+  });
+
+  if (changed) {
+    D.config.migratedV2 = true;
+    save();
+  }
+}
+
+// ═══════════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', async () => {
   load();
   seedDefaults();
+  migrateV2();
   await reqNotifPerm();
   render();
 
