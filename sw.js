@@ -1,5 +1,5 @@
 // Service Worker — Home Tracker
-const CACHE = 'home-tracker-v1';
+const CACHE = 'home-tracker-v2';
 const ASSETS = ['./index.html', './manifest.json'];
 
 // Install: cache core assets
