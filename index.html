@@ -1036,11 +1036,11 @@ function selIncMonth(m) { curIncMonth = m; renderIncome(); }
 //  RENDER EXPENSES
 // ═══════════════════════════════════════════════
 function renderExpenses() {
-  // Recurring
-  const active = D.recurring.filter(e=>e.active);
+  // Recurring — show all (active + paused), exclude only ended ones
   const now0 = today0();
+  const active = D.recurring.filter(e=>!(e.endDate && new Date(e.endDate) < now0));
   const tot = active.reduce((s,e)=>{
-    if (e.endDate && new Date(e.endDate) < now0) return s;
+    if (!e.active) return s;
     if (e.startDate && new Date(e.startDate) > now0) return s;
     if (e.freq === 'quarterly' && !isQuarterDue(e, now0.getFullYear(), now0.getMonth())) return s;
     return s+Number(e.amount);
@@ -1057,9 +1057,9 @@ function renderExpenses() {
 
     // Total deducted this month
     const dedThisMonth = monthDeducted(curYYYYMM);
-    // Total = only items actually due this month (monthly always; quarterly only in due months)
+    // Total = only active items actually due this month
     const totalMonthly = active.reduce((s,e)=>{
-      if (e.endDate && new Date(e.endDate) < now2) return s;
+      if (!e.active) return s;
       if (e.startDate && new Date(e.startDate) > now2) return s;
       if (e.freq === 'quarterly' && !isQuarterDue(e, now2.getFullYear(), now2.getMonth())) return s;
       return s+Number(e.amount);
@@ -1078,23 +1078,27 @@ function renderExpenses() {
           const key = exp.id+'_'+curYYYYMM;
           const isDed = !!(D.deductions||{})[key];
           const hasStarted = !exp.startDate || new Date(exp.startDate) <= now2;
-          const isDueThisMonth = exp.freq !== 'quarterly' || (hasStarted && isQuarterDue(exp, now2.getFullYear(), now2.getMonth()));
+          const isDueThisMonth = exp.active && exp.freq !== 'quarterly' || (exp.active && hasStarted && isQuarterDue(exp, now2.getFullYear(), now2.getMonth()));
           const nextDue = exp.freq === 'quarterly' ? (()=>{
             for (let i=1;i<=6;i++){const d=new Date(now2.getFullYear(),now2.getMonth()+i,1);if(isQuarterDue(exp,d.getFullYear(),d.getMonth()))return MONTHS_SHORT[d.getMonth()]+' '+d.getFullYear();}return'';
           })() : '';
-          return `<div class="li">
+          const isPaused = !exp.active;
+          return `<div class="li" style="${isPaused?'opacity:0.45;':''}">
             <div class="li-icon" style="background:${CAT_BG[cat]||CAT_BG.Other};margin-right:10px">${CAT_ICON[cat]||'📦'}</div>
             <div class="li-info">
-              <div class="li-name">${exp.name}${exp.endDate?`<span class="ends-badge">ends ${exp.endDate}</span>`:''}${exp.freq==='quarterly'?'<span class="ends-badge" style="background:#e0f7fa;color:#00796b">quarterly</span>':''}</div>
-              <div class="li-meta">Day ${exp.dom||1}/${exp.freq==='quarterly'?'qtr':'mo'} · ${fmtDRHM(exp.amount)}${exp.startDate&&!hasStarted?` · <span style="color:var(--teal2);font-weight:600">starts ${exp.startDate}</span>`:!isDueThisMonth&&nextDue?` · <span style="color:var(--g400)">next: ${nextDue}</span>`:''}</div>
+              <div class="li-name">${exp.name}${isPaused?'<span class="ends-badge" style="background:#f5f5f5;color:#999">paused</span>':''}${exp.endDate?`<span class="ends-badge">ends ${exp.endDate}</span>`:''}${exp.freq==='quarterly'&&!isPaused?'<span class="ends-badge" style="background:#e0f7fa;color:#00796b">quarterly</span>':''}</div>
+              <div class="li-meta">Day ${exp.dom||1}/${exp.freq==='quarterly'?'qtr':'mo'} · ${fmtDRHM(exp.amount)}${isPaused?' · <span style="color:#aaa">not in forecast</span>':exp.startDate&&!hasStarted?` · <span style="color:var(--teal2);font-weight:600">starts ${exp.startDate}</span>`:!isDueThisMonth&&nextDue?` · <span style="color:var(--g400)">next: ${nextDue}</span>`:''}</div>
             </div>
             <div style="display:flex;align-items:center;gap:5px">
-              ${isDueThisMonth
+              ${!isPaused && isDueThisMonth
                 ? `<button class="ded-btn${isDed?' deducted':''}" onclick="toggleDeduction('${exp.id}','${curYYYYMM}')">
                     ${curMonthLbl}: ${isDed?'✅ Paid':'○'}
                   </button>`
-                : `<span style="font-size:11px;color:var(--g400);padding:4px 8px;border:1px solid var(--g200);border-radius:8px">not due</span>`
+                : !isPaused
+                  ? `<span style="font-size:11px;color:var(--g400);padding:4px 8px;border:1px solid var(--g200);border-radius:8px">not due</span>`
+                  : ''
               }
+              <button class="ibtn" title="${isPaused?'Resume':'Pause'}" onclick="toggleActive('${exp.id}')">${isPaused?'▶':'⏸'}</button>
               <button class="ibtn" onclick="delRecurring('${exp.id}')">🗑</button>
             </div>
           </div>`;
@@ -1293,6 +1297,7 @@ function doSave(e) {
 // ═══════════════════════════════════════════════
 function delIncome(id)   { if(!confirm('Delete this income entry?'))return; D.income=D.income.filter(e=>e.id!==id); save(); render(); toast('Deleted'); }
 function delRecurring(id){ if(!confirm('Delete recurring expense?'))return; D.recurring=D.recurring.filter(e=>e.id!==id); save(); render(); toast('Deleted'); }
+function toggleActive(id){ const e=D.recurring.find(r=>r.id===id); if(!e)return; e.active=!e.active; save(); render(); toast(e.active?'Resumed ▶':'Paused ⏸'); }
 function delOnce(id)     { if(!confirm('Delete this expense?'))return; D.once=D.once.filter(e=>e.id!==id); save(); render(); toast('Deleted'); }
 function togglePaid(id) {
   const e = D.once.find(x=>x.id===id);
@@ -1581,6 +1586,8 @@ function renderMonthDetail() {
   for (const exp of D.recurring) {
     if (!exp.active) continue;
     if (exp.endDate && new Date(exp.endDate) < first) continue;
+    if (exp.startDate && new Date(exp.startDate) > last) continue;
+    if (exp.freq === 'quarterly' && !isQuarterDue(exp, year, month)) continue;
     const key = exp.id+'_'+yyyymm;
     const done = !!(D.deductions||{})[key];
     expTotal += Number(exp.amount);
@@ -1588,7 +1595,7 @@ function renderMonthDetail() {
     expRows += `<div class="mdet-toggle-row">
       <div class="mdet-toggle-info">
         <div class="mdet-toggle-name">${exp.name}</div>
-        <div class="mdet-toggle-sub">${done ? '✅ Deducted' : 'Day '+exp.dom+' · recurring'}</div>
+        <div class="mdet-toggle-sub">${done ? '✅ Deducted' : 'Day '+exp.dom+' · '+(exp.freq==='quarterly'?'quarterly':'recurring')}</div>
       </div>
       <div class="mdet-toggle-right">
         <span class="mdet-toggle-amt" style="color:${done?'var(--red)':'var(--navy)'}">${fmtDRHM(exp.amount,11)}</span>
