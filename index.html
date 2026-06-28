@@ -665,7 +665,10 @@ function upcomingN(days=30) {
         if (isQuarterDue(exp, candidate.getFullYear(), candidate.getMonth())) {
           const dl = Math.round((candidate - now) / 86400000);
           if (dl >= 0 && dl <= days) {
-            list.push({...exp, dueDate: fmtDate(candidate), type: 'recurring', daysLeft: dl});
+            const yyyymm = `${candidate.getFullYear()}-${String(candidate.getMonth()+1).padStart(2,'0')}`;
+            if (!(D.deductions||{})[exp.id+'_'+yyyymm]) {
+              list.push({...exp, dueDate: fmtDate(candidate), type: 'recurring', daysLeft: dl});
+            }
           }
           break;
         }
@@ -676,6 +679,8 @@ function upcomingN(days=30) {
       for (const due of [thisM, nextM]) {
         const dl = Math.round((due-now)/86400000);
         if (dl >= 0 && dl <= days) {
+          const yyyymm = `${due.getFullYear()}-${String(due.getMonth()+1).padStart(2,'0')}`;
+          if ((D.deductions||{})[exp.id+'_'+yyyymm]) break; // already paid this month
           list.push({...exp, dueDate:fmtDate(due), type:'recurring', daysLeft:dl});
           break;
         }
