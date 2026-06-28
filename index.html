@@ -676,11 +676,11 @@ function upcomingN(days=30) {
     } else {
       const thisM = new Date(now.getFullYear(), now.getMonth(), dom);
       const nextM = new Date(now.getFullYear(), now.getMonth()+1, dom);
+      const curYYYYMM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+      if ((D.deductions||{})[exp.id+'_'+curYYYYMM]) continue; // current month already paid — skip
       for (const due of [thisM, nextM]) {
         const dl = Math.round((due-now)/86400000);
         if (dl >= 0 && dl <= days) {
-          const yyyymm = `${due.getFullYear()}-${String(due.getMonth()+1).padStart(2,'0')}`;
-          if ((D.deductions||{})[exp.id+'_'+yyyymm]) break; // already paid this month
           list.push({...exp, dueDate:fmtDate(due), type:'recurring', daysLeft:dl});
           break;
         }
@@ -1057,13 +1057,19 @@ function renderExpenses() {
 
     // Total deducted this month
     const dedThisMonth = monthDeducted(curYYYYMM);
-    const totalMonthly = active.reduce((s,e)=>s+Number(e.amount),0);
+    // Total = only items actually due this month (monthly always; quarterly only in due months)
+    const totalMonthly = active.reduce((s,e)=>{
+      if (e.endDate && new Date(e.endDate) < now2) return s;
+      if (e.startDate && new Date(e.startDate) > now2) return s;
+      if (e.freq === 'quarterly' && !isQuarterDue(e, now2.getFullYear(), now2.getMonth())) return s;
+      return s+Number(e.amount);
+    },0);
 
     const grouped = active.reduce((g,e)=>{ (g[e.category]=g[e.category]||[]).push(e); return g; },{});
     rEl.innerHTML = `
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--g200)">
         <span style="color:var(--g500)">${curMonthLbl} deducted: <strong style="color:var(--red)">${fmtDRHM(dedThisMonth)}</strong></span>
-        <span style="color:var(--g500)">Total: <strong style="color:var(--navy)">${fmtDRHM(totalMonthly)}</strong></span>
+        <span style="color:var(--g500)">This month: <strong style="color:var(--navy)">${fmtDRHM(totalMonthly)}</strong></span>
       </div>` +
     Object.entries(grouped).map(([cat,items])=>`
       <div style="margin-bottom:10px">
@@ -1071,16 +1077,24 @@ function renderExpenses() {
         ${items.map(exp=>{
           const key = exp.id+'_'+curYYYYMM;
           const isDed = !!(D.deductions||{})[key];
+          const hasStarted = !exp.startDate || new Date(exp.startDate) <= now2;
+          const isDueThisMonth = exp.freq !== 'quarterly' || (hasStarted && isQuarterDue(exp, now2.getFullYear(), now2.getMonth()));
+          const nextDue = exp.freq === 'quarterly' ? (()=>{
+            for (let i=1;i<=6;i++){const d=new Date(now2.getFullYear(),now2.getMonth()+i,1);if(isQuarterDue(exp,d.getFullYear(),d.getMonth()))return MONTHS_SHORT[d.getMonth()]+' '+d.getFullYear();}return'';
+          })() : '';
           return `<div class="li">
             <div class="li-icon" style="background:${CAT_BG[cat]||CAT_BG.Other};margin-right:10px">${CAT_ICON[cat]||'📦'}</div>
             <div class="li-info">
               <div class="li-name">${exp.name}${exp.endDate?`<span class="ends-badge">ends ${exp.endDate}</span>`:''}${exp.freq==='quarterly'?'<span class="ends-badge" style="background:#e0f7fa;color:#00796b">quarterly</span>':''}</div>
-              <div class="li-meta">Day ${exp.dom||1}/${exp.freq==='quarterly'?'qtr':'mo'} · ${fmtDRHM(exp.amount)}${exp.startDate&&new Date(exp.startDate)>today0()?` · <span style="color:var(--g500)">starts ${exp.startDate}</span>`:''}</div>
+              <div class="li-meta">Day ${exp.dom||1}/${exp.freq==='quarterly'?'qtr':'mo'} · ${fmtDRHM(exp.amount)}${exp.startDate&&!hasStarted?` · <span style="color:var(--teal2);font-weight:600">starts ${exp.startDate}</span>`:!isDueThisMonth&&nextDue?` · <span style="color:var(--g400)">next: ${nextDue}</span>`:''}</div>
             </div>
             <div style="display:flex;align-items:center;gap:5px">
-              <button class="ded-btn${isDed?' deducted':''}" onclick="toggleDeduction('${exp.id}','${curYYYYMM}')">
-                ${curMonthLbl}: ${isDed?'✅ Paid':'○'}
-              </button>
+              ${isDueThisMonth
+                ? `<button class="ded-btn${isDed?' deducted':''}" onclick="toggleDeduction('${exp.id}','${curYYYYMM}')">
+                    ${curMonthLbl}: ${isDed?'✅ Paid':'○'}
+                  </button>`
+                : `<span style="font-size:11px;color:var(--g400);padding:4px 8px;border:1px solid var(--g200);border-radius:8px">not due</span>`
+              }
               <button class="ibtn" onclick="delRecurring('${exp.id}')">🗑</button>
             </div>
           </div>`;
