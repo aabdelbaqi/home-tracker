@@ -260,7 +260,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
       <div class="card-title">Monthly Budget Usage</div>
       <div id="budgetBar"></div>
     </div>
-    <div class="sh"><div class="sh-title">📊 Monthly Forecast</div></div>
+    <div class="sh">
+      <div class="sh-title">📊 Monthly Forecast</div>
+      <div class="sh-action" onclick="togglePastMonths()" id="pastMonthsToggle">📅 Past months</div>
+    </div>
+    <div id="pastMonthsChips" style="display:none;margin-bottom:8px"></div>
     <div class="fgrid" id="forecastGrid"></div>
 
     <div class="sh"><div class="sh-title">📅 Next 30 Days</div></div>
@@ -914,6 +918,14 @@ function renderDash() {
     fcastCard(thisFC, projThisEnd, 'this-month', 'This Month', now.getFullYear(), now.getMonth()) +
     fcastCard(nextFC, projNextEnd, 'next-month', 'Next Month', nextD.getFullYear(), nextD.getMonth());
 
+  // Past months chips (last 6 months, newest first)
+  const pastChipsEl = document.getElementById('pastMonthsChips');
+  pastChipsEl.innerHTML = Array.from({length:6}, (_,i) => {
+    const d = new Date(now.getFullYear(), now.getMonth()-1-i, 1);
+    const y = d.getFullYear(), m = d.getMonth();
+    return `<div class="mchip" onclick="showMonthDetail(${y},${m})">${MONTHS_SHORT[m]} ${y}</div>`;
+  }).join('');
+
   // Upcoming preview
   const upEl = document.getElementById('upcomingPreview');
   if (!upcoming.length) {
@@ -1031,6 +1043,16 @@ function renderIncome() {
 }
 
 function selIncMonth(m) { curIncMonth = m; renderIncome(); }
+
+function togglePastMonths() {
+  const el = document.getElementById('pastMonthsChips');
+  const btn = document.getElementById('pastMonthsToggle');
+  const open = el.style.display === 'none';
+  el.style.display = open ? 'flex' : 'none';
+  el.style.flexWrap = 'wrap';
+  el.style.gap = '6px';
+  btn.textContent = open ? '✕ Close' : '📅 Past months';
+}
 
 // ═══════════════════════════════════════════════
 //  RENDER EXPENSES
@@ -1599,6 +1621,7 @@ function renderMonthDetail() {
       </div>
       <div class="mdet-toggle-right">
         <span class="mdet-toggle-amt" style="color:${done?'var(--red)':'var(--navy)'}">${fmtDRHM(exp.amount,11)}</span>
+        <button class="ibtn" title="Move to another month" style="font-size:13px" onclick="mdMoveExpense('recurring','${exp.id}','${yyyymm}')">↔️</button>
         <button class="mdet-tbtn ${done?'done':''}" onclick="mdToggleDeduction('${exp.id}','${yyyymm}')">${done?'✓':'○'}</button>
       </div>
     </div>`;
@@ -1615,6 +1638,7 @@ function renderMonthDetail() {
       </div>
       <div class="mdet-toggle-right">
         <span class="mdet-toggle-amt" style="color:${exp.paid?'var(--red)':'var(--navy)'}">${fmtDRHM(exp.amount,11)}</span>
+        <button class="ibtn" title="Move to another month" style="font-size:13px" onclick="mdMoveExpense('once','${exp.id}','${yyyymm}')">↔️</button>
         <button class="mdet-tbtn ${exp.paid?'done':''}" onclick="mdTogglePaid('${exp.id}')">${exp.paid?'✓':'○'}</button>
       </div>
     </div>`;
@@ -1633,7 +1657,7 @@ function renderMonthDetail() {
       <div class="mdet-total"><span>Total expected</span><span style="color:var(--green)">${fmtDRHM(incTotal)}</span></div>
     </div>
     <div class="mdet-sec" style="margin-top:14px">
-      <div class="mdet-sec-title">💸 Expenses — tap ○ to mark paid</div>
+      <div class="mdet-sec-title">💸 Expenses — ○ mark paid · ↔️ move month</div>
       ${expRows||'<div style="color:var(--g500);font-size:13px;padding:6px 0">No expenses this month</div>'}
       <div class="mdet-total"><span>Total expected</span><span style="color:var(--red)">${fmtDRHM(expTotal)}</span></div>
     </div>
@@ -1648,6 +1672,76 @@ function renderMonthDetail() {
       </div>
     </div>
   `;
+}
+
+// ═══════════════════════════════════════════════
+//  MOVE EXPENSE TO ANOTHER MONTH
+// ═══════════════════════════════════════════════
+let _moveType, _moveId, _moveSrcYYYYMM;
+
+function mdMoveExpense(type, id, yyyymm) {
+  _moveType = type; _moveId = id; _moveSrcYYYYMM = yyyymm;
+  const [yr, mo] = yyyymm.split('-').map(Number);
+
+  // Show ±4 months around the current month (excluding itself)
+  const options = [];
+  for (let i = -4; i <= 4; i++) {
+    if (i === 0) continue;
+    const d = new Date(yr, mo - 1 + i, 1);
+    const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    options.push({ label: MONTHS_SHORT[d.getMonth()] + ' ' + d.getFullYear(), ym });
+  }
+
+  const expName = type === 'recurring'
+    ? (D.recurring.find(e=>e.id===id)||{}).name || 'Expense'
+    : (D.once.find(e=>e.id===id)||{}).name || 'Expense';
+
+  document.getElementById('moveMonthExpName').textContent = expName;
+  document.getElementById('moveMonthCurrentLbl').textContent = `Currently in: ${MONTHS_SHORT[mo-1]} ${yr}`;
+  document.getElementById('moveMonthOptions').innerHTML = options.map(o =>
+    `<button class="btn btn-gray" style="margin-bottom:7px;text-align:left" onclick="confirmMoveExpense('${o.ym}')">${o.label}</button>`
+  ).join('');
+  document.getElementById('moveMonthOverlay').classList.add('show');
+}
+
+function closeMoveMonth() {
+  document.getElementById('moveMonthOverlay').classList.remove('show');
+}
+
+function confirmMoveExpense(targetYYYYMM) {
+  const type = _moveType, id = _moveId, srcYYYYMM = _moveSrcYYYYMM;
+
+  if (type === 'recurring') {
+    if (!D.deductions) D.deductions = {};
+    const srcKey = id + '_' + srcYYYYMM;
+    const tgtKey = id + '_' + targetYYYYMM;
+    if (D.deductions[srcKey]) {
+      // Move existing deduction record to target month
+      D.deductions[tgtKey] = { ...D.deductions[srcKey] };
+      delete D.deductions[srcKey];
+    } else {
+      // Was not yet deducted — mark it as deducted in target month
+      const exp = D.recurring.find(e => e.id === id);
+      if (exp) D.deductions[tgtKey] = { amount: exp.amount, date: fmtDate(new Date()), expName: exp.name };
+    }
+    toast(`✅ ${(D.recurring.find(e=>e.id===id)||{}).name||'Expense'} → ${targetYYYYMM}`);
+  } else {
+    const exp = D.once.find(e => e.id === id);
+    if (exp) {
+      const day = exp.dueDate.split('-')[2];
+      const [ty, tm] = targetYYYYMM.split('-');
+      const maxDay = new Date(parseInt(ty), parseInt(tm), 0).getDate();
+      const clampedDay = String(Math.min(parseInt(day), maxDay)).padStart(2, '0');
+      exp.dueDate = `${ty}-${tm}-${clampedDay}`;
+      toast(`📅 ${exp.name} moved to ${targetYYYYMM}`);
+    }
+  }
+
+  save();
+  closeMoveMonth();
+  // Re-render the detail modal for the SOURCE month (so the user sees it's gone)
+  renderMonthDetail();
+  render();
 }
 
 // Toggles that re-render the modal in place (no need to close)
@@ -1771,6 +1865,22 @@ function confirmResched() {
       <input class="finput" type="number" id="esSrcDom" placeholder="1" min="1" max="28">
     </div>
     <button class="btn btn-navy" style="width:100%;margin-top:16px" onclick="saveExpSrc()">Save Source</button>
+  </div>
+</div>
+
+<!-- Move to Month modal -->
+<div class="overlay" id="moveMonthOverlay" onclick="if(event.target===this)closeMoveMonth()">
+  <div class="modal">
+    <div class="modal-title">
+      <span>Move to Another Month</span>
+      <button class="modal-close" onclick="closeMoveMonth()">✕</button>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:3px" id="moveMonthExpName"></div>
+      <div style="font-size:12px;color:var(--g500)" id="moveMonthCurrentLbl"></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Move to:</div>
+    <div id="moveMonthOptions" style="display:flex;flex-direction:column"></div>
   </div>
 </div>
 
