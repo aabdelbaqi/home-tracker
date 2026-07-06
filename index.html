@@ -627,10 +627,15 @@ function sixMonthChart() {
     const d = new Date(now.getFullYear(), now.getMonth()-5+i, 1);
     const y = d.getFullYear(), m = d.getMonth();
     const first = new Date(y,m,1), last = new Date(y,m+1,0);
+    const yyyymm_c = `${y}-${String(m+1).padStart(2,'0')}`;
     let income=0, expenses=0;
     for (const e of D.income) {
       const ed = new Date(e.date);
       if (ed>=first&&ed<=last) income += Number(e.amount);
+    }
+    // Include expected income receipts marked as received for this month
+    for (const [key, r] of Object.entries(D.incomeReceipts || {})) {
+      if (r.received && key.endsWith('_' + yyyymm_c)) income += Number(r.amount);
     }
     for (const exp of D.recurring) {
       if (!exp.active) continue;
@@ -891,9 +896,10 @@ function renderDash() {
   const thisFC = calcForecast(now.getFullYear(), now.getMonth());
   const nextD  = new Date(now.getFullYear(), now.getMonth()+1, 1);
   const nextFC = calcForecast(nextD.getFullYear(), nextD.getMonth());
-  // Project end-of-month balance: bal + (remaining income not yet entered) - (remaining expenses not yet deducted)
-  const thisRemExpenses = thisFC.expenses - totalDeductedThisMonth;
-  const projThisEnd = bal - Math.max(0, thisRemExpenses);
+  // Project end-of-month balance: bal + (remaining income not yet received) - (remaining expenses not yet deducted)
+  const thisRemIncome   = Math.max(0, thisFC.income - incomeThisMonth);
+  const thisRemExpenses = Math.max(0, thisFC.expenses - totalDeductedThisMonth);
+  const projThisEnd = bal + thisRemIncome - thisRemExpenses;
   const projNextEnd = projThisEnd + nextFC.net;
 
   function fcastCard(fc, projBal, cls, tag, year, month) {
