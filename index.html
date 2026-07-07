@@ -500,6 +500,7 @@ function load() {
 }
 
 function save() {
+  D._savedAt = Date.now();
   localStorage.setItem(LS_KEY, JSON.stringify(D));
   pushFirebase();
 }
@@ -519,6 +520,14 @@ function pushFirebase() {
   }, 800);
 }
 
+// Score how much real activity data a dataset has (receipts, deductions, manual income).
+// Used to decide which side wins in a sync conflict.
+function dataActivity(d) {
+  return (d.income||[]).length +
+    Object.keys(d.deductions||{}).length +
+    Object.keys(d.incomeReceipts||{}).length;
+}
+
 async function pullFirebase() {
   if (!D.config.fbUrl || !D.config.fbSecret) { setSyncDot('gray'); return; }
   setSyncDot('pulse');
@@ -528,8 +537,19 @@ async function pullFirebase() {
     if (!res.ok) throw new Error();
     const remote = await res.json();
     if (remote && typeof remote === 'object') {
-      D = {...emptyData(), ...remote};
-      localStorage.setItem(LS_KEY, JSON.stringify(D));
+      const remoteActivity = dataActivity(remote);
+      const localActivity  = dataActivity(D);
+      const remoteNewer = (remote._savedAt || 0) > (D._savedAt || 0);
+
+      if (remoteActivity > 0 || localActivity === 0 || remoteNewer) {
+        // Firebase has real data, or local is empty, or Firebase is genuinely newer → use Firebase
+        D = {...emptyData(), ...remote};
+        localStorage.setItem(LS_KEY, JSON.stringify(D));
+      } else {
+        // Local has activity data but Firebase looks empty/reset → keep local, push it up to rescue Firebase
+        console.warn('[sync] Local data wins over empty/seeded Firebase — pushing local up.');
+        pushFirebase();
+      }
     }
     setSyncDot('green');
     return true;
@@ -1209,7 +1229,9 @@ async function testNotif() {
 async function saveFbConfig() {
   D.config.fbUrl    = document.getElementById('cfgFbUrl').value.trim();
   D.config.fbSecret = document.getElementById('cfgFbSecret').value.trim();
-  save();
+  // Save credentials only — do NOT push local data before pulling,
+  // to avoid overwriting Firebase with empty/seeded defaults on a fresh device.
+  localStorage.setItem(LS_KEY, JSON.stringify(D));
   const el = document.getElementById('fbStatus');
   el.textContent = 'Syncing…';
   const ok = await pullFirebase();
